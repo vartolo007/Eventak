@@ -11,15 +11,31 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // 1. جدول المستخدمين (المعدل خصيصاً لمشروعنا)
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
+            $table->string('phone');
             $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
+
+            // كلمة المرور تقبل الفراغ لأن الموردين وأصحاب الصالات يدخلون عبر الـ OTP
+            $table->string('password')->nullable();
+
+            // الصلاحيات المعتمدة في النظام
+            $table->enum('role', ['customer', 'vendor', 'venue_owner', 'admin'])->default('customer');
+
+            // حقول الـ OTP
+            $table->string('otp_code')->nullable();
+            $table->timestamp('otp_expires_at')->nullable();
+
+            // ربط المورد بتصنيف الخدمات
+            $table->unsignedBigInteger('vendor_category_id')->nullable();
+
             $table->rememberToken();
             $table->timestamps();
         });
+
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();

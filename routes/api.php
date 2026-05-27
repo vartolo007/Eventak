@@ -7,12 +7,16 @@ use App\Http\Controllers\WelcomeController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+use App\Http\Controllers\AuthController;
 
+// مسارات غير محمية (يمكن لأي شخص الوصول إليها)
+Route::post('/auth/register', [AuthController::class, 'register']);
+Route::post('/auth/login', [AuthController::class, 'login']);
 
-Route::get('/names', [UserController::class, 'the_names']);
-Route::get('/check', [UserController::class, 'checker']);
-
-
+// مسارات محمية (تحتاج توكن)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/auth/logout', [AuthController::class, 'logout']);
+});
 
 
 
