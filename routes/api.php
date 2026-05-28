@@ -2,13 +2,13 @@
 
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WelcomeController;
-//use App\Http\Controllers\ApartmentController;
+
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\AuthController;
-
+use App\Http\Controllers\OtpAuthController;
 // مسارات غير محمية (يمكن لأي شخص الوصول إليها)
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
@@ -19,6 +19,10 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
+
+// مسارات الـ OTP للموردين وأصحاب الصالات
+Route::post('/auth/send-otp', [OtpAuthController::class, 'sendOtp']);
+Route::post('/auth/verify-otp', [OtpAuthController::class, 'verifyOtp']);
 
 // Route::get('welcome',  [WelcomeController::class, 'welcome']);
 // // Route::get('user', [UserController::class, 'index']);
