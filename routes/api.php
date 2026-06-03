@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\OtpAuthController;
 use App\Http\Controllers\ResetPasswordController;
-
+use App\Http\Controllers\AdminController;
 
 // مسارات غير محمية (يمكن لأي شخص الوصول إليها)
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -27,3 +27,13 @@ Route::post('/auth/verify-otp', [OtpAuthController::class, 'verifyOtp']);
 // مسارات استعادة كلمة المرور
 Route::post('/auth/forgot-password', [ResetPasswordController::class, 'forgotPassword']);
 Route::post('/auth/reset-password', [ResetPasswordController::class, 'resetPassword']);
+
+
+
+// تطبيق حارس التوكن (sanctum) وحارس الإدارة (isAdmin) معاً
+Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
+
+    Route::post('/admin/add-vendor', [AdminController::class, 'addVendor']);
+
+    // أي مسارات إضافية للآدمن مستقبلاً توضع هنا...
+});

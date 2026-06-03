@@ -16,7 +16,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
-            $table->string('phone');
+            $table->string('phone')->nullable();
             $table->timestamp('email_verified_at')->nullable();
 
             // كلمة المرور تقبل الفراغ لأن الموردين وأصحاب الصالات يدخلون عبر الـ OTP
