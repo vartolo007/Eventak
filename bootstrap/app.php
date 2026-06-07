@@ -16,6 +16,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // 💡 هنا نقوم بتسجيل المديل وير وإعطائه اسماً مستعاراً
         $middleware->alias([
             'isAdmin' => IsAdmin::class,
+            'isVenueOwner' => \App\Http\Middleware\IsVenueOwner::class,
+            'isCustomer' => \App\Http\Middleware\IsCustomer::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

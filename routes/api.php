@@ -42,7 +42,7 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
 });
 
 // حماية المسار بـ Sanctum والـ Middleware الخاص بصاحب الصالة (venue_owner)
-Route::middleware(['auth:sanctum', 'role:venue_owner'])->group(function () {
+Route::middleware(['auth:sanctum', 'isVenueOwner'])->group(function () {
 
     // مسار تحديث بيانات الصالة
     Route::post('/venue-owner/venue/update', [VenueController::class, 'updateOrCreate']);
@@ -55,10 +55,7 @@ Route::middleware(['auth:sanctum', 'role:venue_owner'])->group(function () {
 
 
 // 1. مسارات الزبون
-Route::middleware(['auth:sanctum', 'role:customer'])->group(function () {
+Route::middleware(['auth:sanctum', 'isCustomer'])->group(function () {
     Route::post('/customer/events', [CustomerEventController::class, 'store']);
+    Route::get('/venues/search', [VenueController::class, 'search']);
 });
-
-// مسار البحث وفلترة الصالات (متاح للجميع)
-Route::get('/venues/search', [VenueController::class, 'search']);
-

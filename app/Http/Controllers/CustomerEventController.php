@@ -40,36 +40,36 @@ class CustomerEventController extends Controller
         // ------------------------------------------------------------
 
         // تحويل أوقات الحجز الجديد إلى كائنات Carbon للتعامل معها برمجياً بسهولة
-        $requestedStart = Carbon::createFromFormat('H:i', $request->start_time);
-        $requestedEnd = Carbon::createFromFormat('H:i', $request->end_time);
+        $requestedStart = Carbon::parse($request->start_time);
+        $requestedEnd = Carbon::parse($request->end_time);
 
         // إضافة "ساعة التنظيف الإلزامية" لوقت الانتهاء المطلوب
         $requestedEndWithCleaning = (clone $requestedEnd)->addHour();
 
-        // جلب جميع الحجوزات الحية (التي لم تُرفض أو تُلتغى) لنفس الصالة ونفس التاريخ
+        // جلب جميع الحجوزات الحية لنفس الصالة ونفس التاريخ
         $existingEvents = Event::where('venue_id', $venue->id)
             ->where('date', $request->date)
             ->whereIn('status', ['pending', 'venue_pending', 'vendor_pending', 'confirmed', 'paid'])
             ->get();
 
         foreach ($existingEvents as $existingEvent) {
-            // تحويل أوقات الحجز الموجود مسبقاً في قاعدة البيانات
-            $existingStart = Carbon::createFromFormat('H:i', $existingEvent->start_time);
-            $existingEnd = Carbon::createFromFormat('H:i', $existingEvent->end_time);
+            // 🔥 التعديل: استخدام Carbon::parse لمنع خطأ Trailing data نهائياً
+            $existingStart = Carbon::parse($existingEvent->start_time);
+            $existingEnd = Carbon::parse($existingEvent->end_time);
 
-            // إضافة ساعة التنظيف للحجز القديم أيضاً لضمان عدم التداخل مع الحجز الجديد
+            // إضافة ساعة التنظيف للحجز القديم أيضاً لضمان عدم التداخل
             $existingEndWithCleaning = (clone $existingEnd)->addHour();
 
-            // فحص التداخل الرياضي المنطقي بين الفترتين الزمنيتين (مع احتساب ساعات التنظيف لكليهما)
-            // الشرط: يتداخل الحجزان إذا كان (وقت بدء أحدهما يقع قبل نهاية الآخر المضاف لها ساعة التنظيف)
+            // 💡 تصحيح الشرط الرياضي لفحص التداخل بين فترتين بشكل صحيح:
+            // يتداخلان إذا كان (وقت البدء الجديد < وقت النهاية القديم مع التنظيف) وَ (وقت النهاية الجديد مع التنظيف > وقت البدء القديم)
             if ($requestedStart->lt($existingEndWithCleaning) && $requestedEndWithCleaning->gt($existingStart)) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'عذراً، هذا الوقت غير متاح للحجز. الصالة مشغولة بحجز آخر أو تقع ضمن ساعة التنظيف الإلزامية المخصصة للصالة.',
                     'conflict_event' => [
-                        'start_time' => $existingEvent->start_time,
-                        'end_time' => $existingEvent->end_time,
-                        'available_after' => $existingEndWithCleaning->format('H:i') // يوضح للزبون متى تفضى الصالة تماماً
+                        'start_time' => $existingStart->format('H:i'), // عرض منسق بدون ثواني للزبون
+                        'end_time' => $existingEnd->format('H:i'),
+                        'available_after' => $existingEndWithCleaning->format('H:i')
                     ]
                 ], 422);
             }
