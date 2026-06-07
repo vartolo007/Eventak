@@ -27,7 +27,7 @@ return new class extends Migration
             $table->decimal('price', 10, 2);
             $table->text('description')->nullable();
             $table->string('cover_image')->nullable();
-
+            $table->json('images')->nullable(); // منسي
             // حالة الطلب: pending (معلق)، approved (مقبول)، rejected (مرفوض)
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
 

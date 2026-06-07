@@ -34,6 +34,10 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
 
     Route::post('/admin/add-vendor', [AdminController::class, 'addVendor']);
 
+    Route::get('/admin/venue-requests', [AdminController::class, 'index']); // عرض المعلق
+    Route::put('/admin/venue-requests/{id}/approve', [AdminController::class, 'approve']); // موافقة
+    Route::put('/admin/venue-requests/{id}/reject', [AdminController::class, 'reject']); // رفض
+
     // أي مسارات إضافية للآدمن مستقبلاً توضع هنا...
 });
 
@@ -54,3 +58,7 @@ Route::middleware(['auth:sanctum', 'role:venue_owner'])->group(function () {
 Route::middleware(['auth:sanctum', 'role:customer'])->group(function () {
     Route::post('/customer/events', [CustomerEventController::class, 'store']);
 });
+
+// مسار البحث وفلترة الصالات (متاح للجميع)
+Route::get('/venues/search', [VenueController::class, 'search']);
+

@@ -19,10 +19,14 @@ class VenueRequest extends Model
         'price',
         'description',
         'cover_image',
+        'images',
         'status',
         'admin_notes'
     ];
 
+    protected $casts = [
+        'images' => 'array',
+    ];
     /**
      * علاقة الطلب مع صاحب الصالة (المستخدم)
      */
