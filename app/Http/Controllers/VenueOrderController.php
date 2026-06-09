@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Event;
 use App\Models\Venue;
+use App\Notifications\EventRejectedNotification;
 
 class VenueOrderController extends Controller
 {
@@ -109,6 +110,11 @@ class VenueOrderController extends Controller
         $event->status = 'cancelled';
         $event->rejection_reason = $request->rejection_reason;
         $event->save();
+
+         $customer = $event->customer;
+        if ($customer) {
+            $customer->notify(new EventRejectedNotification($event));
+        }
 
         return response()->json([
             'status' => 'success',
