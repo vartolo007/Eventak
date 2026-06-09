@@ -8,6 +8,9 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CustomerEventController;
 use App\Http\Controllers\VenueOrderController;
 use App\Http\Controllers\VenueController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\NotificationController;
+
 
 // مسارات غير محمية (يمكن لأي شخص الوصول إليها)
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -58,4 +61,22 @@ Route::middleware(['auth:sanctum', 'isVenueOwner'])->group(function () {
 Route::middleware(['auth:sanctum', 'isCustomer'])->group(function () {
     Route::post('/customer/events', [CustomerEventController::class, 'store']);
     Route::get('/venues/search', [VenueController::class, 'search']);
+    Route::get('/customer/my-requests', [CustomerEventController::class, 'myRequests']);
+    Route::get('/customer/my-requests/{id}', [CustomerEventController::class, 'showRequest']);
+});
+
+
+// مسارات محمية بـ التوكن للمستخدمين المسجلين (أي دور كان)
+Route::middleware('auth:sanctum')->group(function () {
+
+    // 🔏 مسارات الـ User Profile
+    Route::get('/user/profile', [UserController::class, 'profile']);
+    Route::put('/user/profile', [UserController::class, 'updateProfile']);
+    Route::post('/user/avatar', [UserController::class, 'updateAvatar']);
+    Route::delete('/user/avatar', [UserController::class, 'deleteAvatar']);
+
+    // 🔔 مسارات نظام الإشعارات
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/unread', [NotificationController::class, 'unread']);
+    Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
 });

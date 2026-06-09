@@ -14,13 +14,13 @@ class IsVenueOwner
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
     public function handle(Request $request, Closure $next)
-{
-    $user = $request->user();
+    {
+        $user = $request->user();
 
-    if ($user && $user->role === 'venue_owner') {
-        return $next($request);
+        if ($user && $user->role === 'venue_owner') {
+            return $next($request);
+        }
+
+        return response()->json(['message' => 'غير مصرح لك بالوصول، هذه الصلاحية لأصحاب الصالات فقط.'], 403);
     }
-
-    return response()->json(['message' => 'غير مصرح لك بالوصول، هذه الصلاحية لأصحاب الصالات فقط.'], 403);
-}
 }

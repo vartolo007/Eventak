@@ -13,7 +13,7 @@ class VenueController extends Controller
      */
     public function updateOrCreate(Request $request)
     {
-        
+
         // 1. التحقق من المدخلات القادمة من صاحب الصالة
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
