@@ -10,7 +10,9 @@ use App\Http\Controllers\VenueOrderController;
 use App\Http\Controllers\VenueController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\NotificationController;
-
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\VendorOrderController;
 
 // مسارات غير محمية (يمكن لأي شخص الوصول إليها)
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -35,20 +37,34 @@ Route::post('/auth/reset-password', [ResetPasswordController::class, 'resetPassw
 // تطبيق حارس التوكن (sanctum) وحارس الإدارة (isAdmin) معاً
 Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
 
-    Route::post('/admin/add-vendor', [AdminController::class, 'addVendor']);
+    Route::post('/admin/add-user', [AdminController::class, 'addUser']);
 
-    Route::get('/admin/venue-requests', [AdminController::class, 'index']); // عرض المعلق
-    Route::put('/admin/venue-requests/{id}/approve', [AdminController::class, 'approve']); // موافقة
-    Route::put('/admin/venue-requests/{id}/reject', [AdminController::class, 'reject']); // رفض
+
+
+    Route::get('/admin/services/requests', [AdminController::class, 'serviceRequests']);
+    Route::put('/admin/services/{id}/approve', [AdminController::class, 'approveService']);
+    Route::put('/admin/services/{id}/reject', [AdminController::class, 'rejectService']);
+
+    Route::get('/admin/venue-requests', [AdminController::class, 'venueRequests']);                    // عرض الطلبات المعلقة
+    Route::put('/admin/venue-requests/{id}/approve', [AdminController::class, 'approveVenueRequest']); // موافقة
+    Route::put('/admin/venue-requests/{id}/reject', [AdminController::class, 'rejectVenueRequest']);   // رفض
 
     // أي مسارات إضافية للآدمن مستقبلاً توضع هنا...
 });
+
+// 1️⃣ مسارات عامة (متاحة للجميع: ضيوف، زبائن، موردين)
+Route::get('/services', [ServiceController::class, 'index']);             // عرض كافة الخدمات مع الفلترة
+Route::get('/services/categories', [ServiceController::class, 'categories']); // عرض تصنيفات الخدمات
+Route::get('/services/{id}', [ServiceController::class, 'show']);         // عرض تفاصيل خدمة واحدة
+
 
 // حماية المسار بـ Sanctum والـ Middleware الخاص بصاحب الصالة (venue_owner)
 Route::middleware(['auth:sanctum', 'isVenueOwner'])->group(function () {
 
     // مسار تحديث بيانات الصالة
-    Route::post('/venue-owner/venue/update', [VenueController::class, 'updateOrCreate']);
+    Route::post('/venue-owner/venue', [VenueController::class, 'store']);         // إضافة صالة جديدة
+    Route::put('/venue-owner/venue/{id}', [VenueController::class, 'update']);     // تعديل صالة معينة
+    Route::delete('/venue-owner/venue/{id}', [VenueController::class, 'destroy']); // طلب حذف صالة
 
     // مسارات قرارات الحجز الجديدة لصاحب الصالة
     Route::get('/venue-owner/events', [VenueOrderController::class, 'ownerIndex']);
@@ -57,12 +73,37 @@ Route::middleware(['auth:sanctum', 'isVenueOwner'])->group(function () {
 });
 
 
-// 1. مسارات الزبون
+// مسارات الزبون
 Route::middleware(['auth:sanctum', 'isCustomer'])->group(function () {
+    // إنشاء مناسبة جديدة
     Route::post('/customer/events', [CustomerEventController::class, 'store']);
+
+    // عرض مناسباتي
+    Route::get('/customer/events', [CustomerEventController::class, 'myRequests']);
+    Route::get('/customer/events/{id}', [CustomerEventController::class, 'showRequest']);
+
+    // 💳 مسارات الدفع والوصولات المالية للزبون:
+    Route::post('/customer/payments', [PaymentController::class, 'store']);                    // إجراء عملية دفع جديدة
+    Route::get('/customer/payments/{id}', [PaymentController::class, 'show']);                 // عرض تفاصيل وصل دفع معين
+    Route::get('/customer/invoices/{invoiceId}/payment', [PaymentController::class, 'byInvoice']); // عرض دفع متعلق بفاتورة معينة
+
+    // البحث والفلترة
     Route::get('/venues/search', [VenueController::class, 'search']);
-    Route::get('/customer/my-requests', [CustomerEventController::class, 'myRequests']);
-    Route::get('/customer/my-requests/{id}', [CustomerEventController::class, 'showRequest']);
+});
+
+// مسارات المورد (Vendor Routes)
+Route::middleware(['auth:sanctum', 'isVendor'])->group(function () {
+// 🛠️ 1. مسارات إدارة الخدمات الخاصة بالمورد (إضافة، تعديل، طلب حذف)
+    Route::post('/vendor/services', [VendorOrderController::class, 'store']);          // إضافة خدمة جديدة
+    Route::post('/vendor/services/{id}', [VendorOrderController::class, 'update']);     // تعديل الخدمة (استخدمنا POST لدعم رفع الصور)
+    Route::delete('/vendor/services/{id}', [VendorOrderController::class, 'destroy']);  // طلب حذف الخدمة
+
+
+    // 🚚 إدارة طلبات خدمات المناسبات للمورد:
+    Route::get('/vendor/orders', [VendorOrderController::class, 'index']); // عرض الطلبات القادمة للمورد
+    Route::put('/vendor/orders/{eventId}/services/{serviceId}/accept', [VendorOrderController::class, 'acceptService']); // قبول الخدمة
+    Route::put('/vendor/orders/{eventId}/services/{serviceId}/reject', [VendorOrderController::class, 'rejectService']); // رفض الخدمة
+
 });
 
 
@@ -76,7 +117,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/user/avatar', [UserController::class, 'deleteAvatar']);
 
     // 🔔 مسارات نظام الإشعارات
-    Route::get('/notifications', [NotificationController::class, 'index']);
-    Route::get('/notifications/unread', [NotificationController::class, 'unread']);
-    Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::get('/notifications', [NotificationController::class, 'index']);       //عرض كافة الإشعارات (المقروءة وغير المقروءة)
+    Route::get('/notifications/unread', [NotificationController::class, 'unread']); //عرض الإشعارات غير المقروءة فقط
+    Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);  //تحويل إشعار معين إلى مقروء
 });

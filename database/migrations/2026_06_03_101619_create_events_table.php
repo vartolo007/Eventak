@@ -14,12 +14,16 @@ return new class extends Migration
         Schema::create('events', function (Blueprint $table) {
             $table->id();
             $table->foreignId('customer_id')->constrained('users')->onDelete('cascade');
+            $table->string('event_name');
+            $table->string('event_type');
             $table->foreignId('venue_id')->constrained('venues')->onDelete('cascade');
             $table->date('date');
             $table->time('start_time');
             $table->time('end_time');
             $table->integer('guests_count');
             $table->decimal('total_price', 10, 2)->default(0.00); // السعر المحسوب برمجياً
+            $table->foreignId('invoice_id')->nullable()->constrained('invoices')->onDelete('set null');
+             $table->foreignId('payment_id')->nullable()->constrained('payments')->onDelete('set null');
             $table->text('note')->nullable();
             // إدارة الحالات مدمجة بالكامل هنا لتسهيل الـ Workflow
             $table->enum('status', ['pending', 'venue_pending', 'vendor_pending', 'confirmed', 'paid', 'completed', 'cancelled'])->default('pending');

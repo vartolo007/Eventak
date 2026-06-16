@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'isAdmin' => IsAdmin::class,
             'isVenueOwner' => \App\Http\Middleware\IsVenueOwner::class,
             'isCustomer' => \App\Http\Middleware\IsCustomer::class,
+            'isVendor' => \App\Http\Middleware\IsVendor::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

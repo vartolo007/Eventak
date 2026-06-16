@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Event;
 use App\Models\Venue;
+use App\Notifications\EventApprovedNotification;
 use App\Notifications\EventRejectedNotification;
 
 class VenueOrderController extends Controller
@@ -67,6 +68,12 @@ class VenueOrderController extends Controller
         // تحديث الحالة بحسب الـ Workflow المطلوبة
         $event->status = 'vendor_pending';
         $event->save();
+
+        $customer = $event->customer; // تأكد أن علاقة customer معرفة في موديل Event
+    if ($customer) {
+        // نستخدم كلاس إشعار القبول ليخبر الزبون بالتحديث الجديد
+        $customer->notify(new EventApprovedNotification($event));
+    }
 
         return response()->json([
             'status' => 'success',

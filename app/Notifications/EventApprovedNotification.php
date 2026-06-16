@@ -18,7 +18,7 @@ class EventApprovedNotification extends Notification
         return [
             'event_id' => $this->event->id,
             'title' => 'تأكيد الحجز الخاص بك',
-            'message' => "مبارك! تمت الموافقة على طلب حجز الصالة الخاص بك بتاريخ " . $this->event->date,
+            'message' => "تمت الموافقة على حجز الصالة لمناسبتك من قبل الإدارة، والطلب الآن قيد التنسيق مع الموردين لتجهيز الخدمات." . $this->event->date,
             'type' => 'booking_approved'
         ];
     }

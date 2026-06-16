@@ -1,0 +1,38 @@
+<?php
+
+namespace App\Notifications;
+
+use Illuminate\Bus\Queueable;
+use Illuminate\Notifications\Notification;
+use App\Models\Event;
+use App\Models\Service;
+
+class VendorRejectedServiceNotification extends Notification
+{
+    use Queueable;
+
+    protected $event;
+    protected $service;
+
+    public function __construct(Event $event, Service $service)
+    {
+        $this->event = $event;
+        $this->service = $service;
+    }
+
+    public function via($notifiable)
+    {
+        return ['database']; // 💾 حفظ في قاعدة البيانات للزبون
+    }
+
+    public function toArray($notifiable)
+    {
+        return [
+            'event_id' => $this->event->id,
+            'service_id' => $this->service->id,
+            'type' => 'vendor_service_rejected',
+            'title' => 'اعتذار عن تقديم خدمة ⚠️',
+            'message' => "نعتذر منك، لقد اعتذر المورد عن تقديم خدمة ({$this->service->name}) لمناسبتك ({$this->event->event_name})، ولذلك تم إلغاء الطلب لتتمكن من إعادة التنسيق.",
+        ];
+    }
+}

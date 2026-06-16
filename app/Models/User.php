@@ -59,4 +59,23 @@ class User extends Authenticatable
     {
         return $this->hasMany(OtpCode::class);
     }
+
+
+    // علاقة المستخدم بـ المناسبات كزبون
+    public function events()
+    {
+        return $this->hasMany(Event::class, 'customer_id');
+    }
+
+    // علاقة المستخدم بـ الصالات كصاحب صالة
+    public function venues()
+    {
+        return $this->hasMany(Venue::class, 'owner_id');
+    }
+
+    // علاقة المستخدم بـ الخدمات كمورد
+    public function services()
+    {
+        return $this->hasMany(Service::class, 'vendor_id');
+    }
 }

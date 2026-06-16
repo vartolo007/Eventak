@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Event;
 use App\Models\Venue;
+use App\Models\Service;
+use App\Models\Invoice;
 use Carbon\Carbon;
 use App\Notifications\NewEventNotification;
 use App\Notifications\EventApprovedNotification;
@@ -14,28 +16,39 @@ use App\Notifications\EventRejectedNotification;
 class CustomerEventController extends Controller
 {
     /**
-     * محرك إنشاء مناسبة جديدة للزبون مع خوارزمية ساعة التنظيف
+     * محرك إنشاء مناسبة جديدة مع خدمات وفاتورة
      */
     public function store(Request $request)
     {
-        // 1. التحقق من المدخلات الأساسية القادمة من الزبون
+        // Step 1: التحقق من المدخلات
         $validatedData = $request->validate([
+            // Step 1: تفاصيل المناسبة
+            'event_name' => 'required|string|max:255',
+            'event_type' => 'required|string|max:255',
+
+            // Step 2: المكان والتاريخ
             'venue_id' => 'required|exists:venues,id',
-            'date' => 'required|date|after_or_equal:today', // منع الحجز في تواريخ قديمة
+            'date' => 'required|date|after_or_equal:today',
             'start_time' => 'required|date_format:H:i',
-            'end_time' => 'required|date_format:H:i|after:start_time', // وقت الانتهاء بعد البدء
+            'end_time' => 'required|date_format:H:i|after:start_time',
             'guests_count' => 'required|integer|min:1',
+
+            // Step 3: الخدمات المختارة
+            'services' => 'nullable|array',
+            'services.*.service_id' => 'required_with:services|exists:services,id',
+            'services.*.quantity' => 'required_with:services|integer|min:1',
+
             'note' => 'nullable|string',
         ]);
 
-        // 2. جلب بيانات الصالة للتحقق من السعر والاستيعاب
+        $user = $request->user();
         $venue = Venue::findOrFail($request->venue_id);
 
-        // 3. فحص القدرة الاستيعابية للصالة
+        // التحقق من القدرة الاستيعابية
         if ($request->guests_count > $venue->capacity) {
             return response()->json([
                 'status' => 'error',
-                'message' => "عذراً، عدد الضيوف يتجاوز القدرة الاستيعابية القصوى للصالة وهي ({$venue->capacity}) شخص."
+                'message' => "عدد الضيوف يتجاوز القدرة الاستيعابية ({$venue->capacity}) شخص."
             ], 422);
         }
 
@@ -83,12 +96,36 @@ class CustomerEventController extends Controller
 
         // 4. حساب السعر الإجمالي (اعتماد سعر الصالة الأساسي للطلب)
         $totalPrice = $venue->price;
+        $servicesData = [];
+        // معالجة الخدمات المختارة
+        if (!empty($request->services)) {
+            foreach ($request->services as $serviceItem) {
+                $service = Service::findOrFail($serviceItem['service_id']);
+                $servicePrice = $service->price * $serviceItem['quantity'];
+                $totalPrice += $servicePrice;
 
-        // 5. جلب الزبون الحالي من التوكن وحفظ سجل المناسبة
-        $user = $request->user();
+                $servicesData[] = [
+                    'service_id' => $service->id,
+                    'quantity' => $serviceItem['quantity'],
+                    'price' => $service->price,
+                    'status' => 'pending'
+                ];
+            }
+        }
 
+        // إنشاء الفاتورة
+        $invoice = Invoice::create([
+            'venue_price' => $venue->price,
+            'services_total' => $totalPrice - $venue->price,
+            'total_amount' => $totalPrice,
+            'status' => 'pending'
+        ]);
+
+        // إنشاء المناسبة
         $event = Event::create([
             'customer_id' => $user->id,
+            'event_name' => $request->event_name,
+            'event_type' => $request->event_type,
             'venue_id' => $venue->id,
             'date' => $request->date,
             'start_time' => $request->start_time,
@@ -96,57 +133,48 @@ class CustomerEventController extends Controller
             'guests_count' => $request->guests_count,
             'total_price' => $totalPrice,
             'note' => $request->note,
-            'status' => 'pending', // الحالة الابتدائية للطلب
+            'invoice_id' => $invoice->id,
+            'status' => 'pending'
         ]);
-        // 🔔 1️⃣ المكان الصحيح الأول: إرسال إشعار لصاحب الصالة فور نجاح الحجز يدوياً
-        $venueOwner = $venue->owner; // جلب موديل المستخدم الخاص بصاحب الصالة (تأكدي من وجود علاقة owner في موديل Venue)
+
+        // ربط الخدمات بالمناسبة
+        if (!empty($servicesData)) {
+            foreach ($servicesData as $service) {
+                $event->services()->attach($service['service_id'], [
+                    'quantity' => $service['quantity'],
+                    'price' => $service['price'],
+                    'status' => 'pending'
+                ]);
+            }
+        }
+
+        // تحديث الفاتورة بـ event_id
+        $invoice->update(['event_id' => $event->id]);
+
+        // إرسال إشعار لصاحب الصالة
+        $venueOwner = $venue->owner;
         if ($venueOwner) {
             $venueOwner->notify(new NewEventNotification($event));
         }
 
-        // 6. إرجاع استجابة النجاح للفرونت إند
         return response()->json([
             'status' => 'success',
-            'message' => 'تم إرسال طلب حجز المناسبة بنجاح، بانتظار موافقة صاحب الصالة.',
-            'data' => $event
+            'message' => 'تم إنشاء المناسبة بنجاح بانتظار الموافقة.',
+            'data' => [
+                'event_id' => $event->id,
+                'event_name' => $event->event_name,
+                'event_type' => $event->event_type,
+                'venue_name' => $venue->name,
+                'total_price' => $totalPrice,
+                'invoice_id' => $invoice->id,
+                'services_count' => count($servicesData)
+            ]
         ], 201);
     }
 
-    public function accept($id)
-    {
-        $event = Event::findOrFail($id);
-        $event->update(['status' => 'confirmed']); // أو حسب الحالة المعتمدة لديكِ 'approved'
 
 
-        $customer = $event->customer; // جلب الزبون (تأكدي أن اسم العلاقة في موديل Event هو customer أو user واضبطيها هنا)
-        if ($customer) {
-            $customer->notify(new EventApprovedNotification($event));
-        }
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'تم تأكيد الحجز بنجاح، وإرسال إشعار للزبون.'
-        ]);
-    }
-
-
-    // دالة رفض صاحب الصالة للحجز
-
-    public function reject($id)
-    {
-        $event = Event::findOrFail($id);
-        $event->update(['status' => 'rejected']);
-
-        $customer = $event->customer;
-        if ($customer) {
-            $customer->notify(new EventRejectedNotification($event));
-        }
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'تم رفض طلب الحجز بنجاح، وإشعار الزبون بالنتيجة.'
-        ]);
-    }
 
     //1. جلب كافة الحجوزات الخاصة بالزبون الحالي
 

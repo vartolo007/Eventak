@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Service;
 use App\Models\User;
 use App\Models\Venue;
 use App\Models\VenueRequest;
@@ -9,7 +10,7 @@ use Illuminate\Http\Request;
 
 class AdminController extends Controller
 {
-    public function addVendor(Request $request)
+    public function addUser(Request $request)
     {
         $request->validate([
             'name' => 'required|string|max:255',
@@ -34,11 +35,105 @@ class AdminController extends Controller
 
 
 
-    public function index()
+
+    // 1. عرض كافة طلبات الخدمات المعلقة (إضافة أو تعديل أو حذف)
+    public function serviceRequests()
     {
-        $requests = VenueRequest::with('owner:id,name,email')
-            ->where('status', 'pending')
-            ->orderBy('created_at', 'asc')
+        $requests = Service::whereIn('status', ['pending', 'pending_delete'])->with('vendor')->get();
+        return response()->json(['status' => 'success', 'data' => $requests]);
+    }
+
+
+    /**
+     * 1. دالة الموافقة على طلبات الخدمات (تفعيل الإضافة/التعديل أو تأكيد الحذف)
+     */
+    public function approveService($id)
+    {
+        $service = Service::findOrFail($id);
+
+        // إذا كان المورد يطلب حذف الخدمة، ووافق الأدمن، نقوم بحذفها نهائياً
+        if ($service->status === 'pending_delete') {
+            $service->delete();
+
+            // هنا يمكنك إرسال إشعار للمورد بأنه تم قبول طلب الحذف
+            // $service->vendor->notify(new ServiceActionNotification($service, 'deleted'));
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'تمت الموافقة على طلب الحذف، وتمت إزالة الخدمة نهائياً من النظام.'
+            ], 200);
+        }
+
+        // إذا كان الطلب إضافة جديدة أو تعديل، نقوم بتحويل الحالة إلى active لتظهر للزبائن
+        if ($service->status === 'pending') {
+            $service->update(['status' => 'active']);
+
+            // هنا يمكنك إرسال إشعار للمورد بأن خدمته أصبحت حية ونشطة
+            // $service->vendor->notify(new ServiceActionNotification($service, 'approved'));
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'تمت الموافقة على الخدمة وتفعيلها بنجاح، وهي الآن معروضة في التطبيق.',
+                'data' => $service
+            ], 200);
+        }
+
+        return response()->json([
+            'status' => 'error',
+            'message' => 'هذه الخدمة ليست بحاجة إلى موافقة حالياً.'
+        ], 400);
+    }
+
+    /**
+     * 2. دالة الرفض لطلبات الخدمات (رفض الإضافة أو رفض الحذف)
+     */
+    public function rejectService($id)
+    {
+        $service = Service::findOrFail($id);
+
+        // إذا رفض الأدمن طلب الحذف، نعيد الخدمة نشطة (active) كما كانت
+        if ($service->status === 'pending_delete') {
+            $service->update(['status' => 'active']);
+
+            // إشعار المورد برفض طلب الحذف
+            // $service->vendor->notify(new ServiceActionNotification($service, 'delete_rejected'));
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'تم رفض طلب الحذف، وأعيدت الخدمة نشطة ومتوفرة في التطبيق.',
+                'data' => $service
+            ], 200);
+        }
+
+        // إذا رفض الأدمن الإضافة الجديدة أو التعديل، نحولها إلى inactive (غير نشطة) لكي لا يراها الزبائن ويعدلها المورد لاحقاً
+        if ($service->status === 'pending') {
+            $service->update(['status' => 'inactive']);
+
+            // إشعار المورد برفض إضافة الخدمة ليتأكد من بياناتها
+            // $service->vendor->notify(new ServiceActionNotification($service, 'rejected'));
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'تم رفض طلب الخدمة، وتم تحويل حالتها إلى غير نشطة (inactive).',
+                'data' => $service
+            ], 200);
+        }
+
+        return response()->json([
+            'status' => 'error',
+            'message' => 'هذه الخدمة ليست في حالة مراجعة لطلب الرفض.'
+        ], 400);
+    }
+
+    /**
+     * عرض كافة طلبات الصالات المعلقة للأدمن (طلبات الإنشاء، التعديل، والحذف)
+     */
+    public function venueRequests()
+    {
+        // جلب كافة السجلات التي حالتها pending (معلقة) مع بيانات صاحب الصالة (User)
+        $requests = VenueRequest::where('status', 'pending')
+            ->with('owner') // افترضنا أن هناك علاقة اسمها owner في موديل VenueRequest تربطه بالمستخدم
+            ->orderBy('created_at', 'desc')
             ->get();
 
         return response()->json([
@@ -48,68 +143,103 @@ class AdminController extends Controller
         ], 200);
     }
 
-    /**
-     * 2. الموافقة على الطلب ونقل البيانات والصور المتعددة للصالات الفعالة
-     */
-    public function approve($id)
-    {
-        // جلب الطلب المعلق
-        $venueRequest = VenueRequest::where('id', $id)->where('status', 'pending')->firstOrFail();
 
-        // نقل البيانات أو تحديثها في جدول الصالات الأساسي (بناءً على owner_id لضمان صالة واحدة لكل مالك)
-        $venue = Venue::updateOrCreate(
-            ['owner_id' => $venueRequest->owner_id],
-            [
+    public function approveVenueRequest($requestId)
+    {
+        $venueRequest = VenueRequest::findOrFail($requestId);
+
+        if ($venueRequest->status !== 'pending') {
+            return response()->json(['status' => 'error', 'message' => 'هذا الطلب معالج مسبقاً'], 400);
+        }
+
+        // 1. موافقة على إضافة صالة جديدة كلياً
+        if ($venueRequest->type === 'create') {
+            Venue::create([
+                'user_id' => $venueRequest->user_id,
                 'name' => $venueRequest->name,
-                'address' => $venueRequest->address,
                 'capacity' => $venueRequest->capacity,
                 'price' => $venueRequest->price,
+                'address' => $venueRequest->address,
                 'description' => $venueRequest->description,
-                'cover_image' => $venueRequest->cover_image,
-                'images' => $venueRequest->images, // نفل مصفوفة الصور الإضافية التي رفعتها أنت بنجاح
-            ]
-        );
+                'status' => 'active'
+            ]);
+        }
 
-        // تحديث حالة الطلب وربطه بالصالة الفعالة
-        $venueRequest->update([
-            'status' => 'approved',
-            'venue_id' => $venue->id
-        ]);
+        // 2. موافقة على تعديل صالة قائمة
+        if ($venueRequest->type === 'update') {
+            $venue = Venue::findOrFail($venueRequest->venue_id);
+            $venue->update([
+                'name' => $venueRequest->name,
+                'capacity' => $venueRequest->capacity,
+                'price' => $venueRequest->price,
+                'address' => $venueRequest->address,
+                'description' => $venueRequest->description,
+            ]);
+        }
+
+        // 3. موافقة على حذف صالة
+        if ($venueRequest->type === 'delete') {
+            $venue = Venue::findOrFail($venueRequest->venue_id);
+            $venue->delete();
+        }
+
+        // تحديث حالة الطلب نفسه ليصبح مقبولاً وينتهي من القائمة المعلقة
+        $venueRequest->update(['status' => 'approved']);
 
         return response()->json([
             'status' => 'success',
-            'message' => 'تمت الموافقة على الطلب بنجاح، ونُقلت البيانات والصور إلى قائمة الصالات الفعالة.',
-            'data' => $venue
+            'message' => 'تمت معالجة طلب الصالة والموافقة عليه بنجاح وتحديث البيانات الحية.'
         ], 200);
     }
 
+
     /**
-     * 3. رفض الطلب مع تسجيل الملاحظات أو السبب لمالك الصالة
+     * دالة رفض طلبات الصالات (سواء رفض إضافة، رفض تعديل، أو رفض حذف)
      */
-    public function reject(Request $request, $id)
+    public function rejectVenueRequest($requestId)
     {
-        // التحقق من أن سبب الرفض مكتوب
-        $request->validate([
-            'admin_notes' => 'required|string|max:1000'
-        ]);
+        // جلب سطر الطلب من جدول الطلبات المؤقت
+        $venueRequest = VenueRequest::findOrFail($requestId);
 
-        // جلب الطلب المعلق
-        $venueRequest = VenueRequest::where('id', $id)->where('status', 'pending')->firstOrFail();
+        // التأكد من أن الطلب ما زال معلقاً ولم يتم البت فيه سابقاً
+        if ($venueRequest->status !== 'pending') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'هذا الطلب تم اتخاذ إجراء سابق عليه بالفعل.'
+            ], 400);
+        }
 
-        // تحديث حالة الطلب لـ مرفوض وإضافة السبب
-        $venueRequest->update([
-            'status' => 'rejected',
-            'admin_notes' => $request->admin_notes
-        ]);
+        // تحديث حالة الطلب في جدول الـ requests إلى 'rejected'
+        $venueRequest->update(['status' => 'rejected']);
+
+        // 💡 المنطق البرمجي للرفض بحسب نوع الطلب:
+        switch ($venueRequest->type) {
+            case 'create':
+                // في حال رفض إضافة صالة جديدة: لا نلمس جدول الـ venues نهائياً (وكأن شيئاً لم يكن).
+                $message = 'تم رفض طلب إنشاء الصالة بنجاح، ولن تظهر في النظام.';
+                break;
+
+            case 'update':
+                // في حال رفض التعديل: الصالة الأصلية الحية في جدول الـ venues تبقى كما هي ببياناتها القديمة المستقرة.
+                $message = 'تم رفض طلب التعديل، وبقيت بيانات الصالة الأصلية الحية دون أي تغيير.';
+                break;
+
+            case 'delete':
+                // في حال رفض الحذف: الصالة الأصلية الحية في جدول الـ venues تبقى نشطة ومتوفرة للزبائن ويتم إلغاء فكرة الحذف.
+                $message = 'تم رفض طلب الحذف، وظلت الصالة نشطة ومتاحة للحجوزات في التطبيق.';
+                break;
+
+            default:
+                $message = 'تم رفض الطلب بنجاح.';
+        }
+
+        // 🔔 هنا نرسل إشعاراً لصاحب الصالة يخبره برفض طلبه لتعديل بياناته أو مراجعة الإدارة
+        // $venueRequest->owner->notify(new VenueRequestRejectedNotification($venueRequest));
 
         return response()->json([
             'status' => 'success',
-            'message' => 'تم رفض الطلب بنجاح، وإرسال الملاحظات إلى صاحب الصالة.',
-            'data' => [
-                'request_id' => $venueRequest->id,
-                'status' => $venueRequest->status,
-                'admin_notes' => $venueRequest->admin_notes
-            ]
+            'message' => $message,
+            'data' => $venueRequest
         ], 200);
     }
 }

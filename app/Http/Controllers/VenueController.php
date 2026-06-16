@@ -5,74 +5,139 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Venue;
 use App\Models\VenueRequest;
+use App\Models\User;
+use App\Notifications\NewVenueRequestNotification;
 
 class VenueController extends Controller
 {
     /**
-     * إرسال طلب إنشاء أو تعديل بيانات الصالة إلى الأدمن للمراجعة
+     * 1. دالة إضافة صالة جديدة (تخزن الحقول الصريحة في جدول الـ requests)
      */
-    public function updateOrCreate(Request $request)
+    public function store(Request $request)
     {
-
-        // 1. التحقق من المدخلات القادمة من صاحب الصالة
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
-            'address' => 'required|string',
-            'capacity' => 'required|integer|min:1',
-            'price' => 'required|numeric|min:0',
-            'description' => 'nullable|string',
-            'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-            'images' => 'nullable|array', // 👈 التأكد أنها مصفوفة
-            'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:2048', // 👈 التحقق من كل صورة داخلها
-        ]);
-
         $user = $request->user();
 
-        // 2. فحص ما إذا كان لصاحب الصالة صالة حقيقية مسجلة مسبقاً في النظام
-        $existingVenue = Venue::where('owner_id', $user->id)->first();
-
-        // 3. منطق معالجة صورة الغلاف المقترحة
-        if ($request->hasFile('cover_image')) {
-            // تخزين الصورة الجديدة في مجلد مؤقت للطلبات بانتظار موافقة الأدمن
-            $validatedData['cover_image'] = $request->file('cover_image')->store('venues/requests', 'public');
-        }
-
-        // 💡 3. الإضافة الجديدة: معالجة الصور الإضافية المتعددة
-        $uploadedImages = [];
-        if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $image) {
-                // تخزين كل صورة في مجلد خاص وتوليد اسم فريد لها
-                $path = $image->store('venues/gallery', 'public');
-                $uploadedImages[] = $path; // حفظ المسار في المصفوفة
-            }
-        }
-
-        // 4. إنشاء سجل "طلب تعديل/إضافة" جديد للأدمن
-        // هذا السجل يذهب لجدول الـ VenueRequest وليس لجدول الصالات الأساسي
-        $venueRequest = VenueRequest::create([
-            'owner_id' => $user->id,
-            'venue_id' => $existingVenue ? $existingVenue->id : null, // إذا كانت الصالة موجودة، نربط الطلب بها كتعديل، وإذا كانت جديدة يترك null كطلب إنشاء
-            'name' => $validatedData['name'],
-            'address' => $validatedData['address'],
-            'capacity' => $validatedData['capacity'],
-            'price' => $validatedData['price'],
-            'description' => $validatedData['description'] ?? null,
-            'cover_image' => $validatedData['cover_image'] ?? ($existingVenue ? $existingVenue->cover_image : null),
-            'images' => !empty($uploadedImages) ? $uploadedImages : ($existingVenue ? $existingVenue->images : null),
-            'status' => 'pending', // حالة الطلب الافتراضية معلق بانتظار الأدمن
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'capacity' => 'required|integer|min:1',
+            'price' => 'required|numeric|min:0',
+            'address' => 'required|string',
+            'description' => 'nullable|string',
         ]);
 
-        // 5. إرجاع الاستجابة للفرونت إند لإعلام صاحب الصالة
+        // هنا نستخدم الحقول الصريحة داخل جدول الـ requests كما هي في قاعدة بياناتك
+        $venueRequest = VenueRequest::create([
+            'user_id' => $user->id,
+            'venue_id' => null, // صالة جديدة
+            'type' => 'create',
+            'name' => $validated['name'],
+            'capacity' => $validated['capacity'],
+            'price' => $validated['price'],
+            'address' => $validated['address'],
+            'description' => $validated['description'] ?? null,
+            'status' => 'pending' // معلق بانتظار الأدمن
+        ]);
+
+        // 🔔 إشعار الأدمن في الداتابيز
+        $admin = User::where('role', 'admin')->first();
+        if ($admin) {
+            $admin->notify(new NewVenueRequestNotification($venueRequest, 'create'));
+        }
+
         return response()->json([
             'status' => 'success',
-            'message' => 'تم إرسال البيانات بنجاح إلى الأدمن مراجعتها واعتمادها.',
-            'data' => [
-                'request_id' => $venueRequest->id,
-                'status' => $venueRequest->status,
+            'message' => 'تم إرسال طلب إضافة الصالة للأدمن بنجاح وهو قيد المراجعة حالياً.',
+            'data' => $venueRequest
+        ], 201);
+    }
 
-                'cover_image_url' => $venueRequest->cover_image ? asset('storage/' . $venueRequest->cover_image) : null
-            ]
-        ], 202);
+    /**
+     * 2. دالة تعديل بيانات صالة (تأخذ الحقول وتضعها في سطر جديد بجدول الـ requests)
+     */
+    public function update(Request $request, $id)
+    {
+        $user = $request->user();
+        $venue = Venue::findOrFail($id); // الصالة الأصلية الحية
+
+        if ($venue->user_id !== $user->id) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'ليس لديك صلاحية تعديل بيانات هذه الصالة'
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'capacity' => 'sometimes|integer|min:1',
+            'price' => 'sometimes|numeric|min:0',
+            'address' => 'sometimes|string',
+            'description' => 'nullable|string',
+        ]);
+
+        // نفتح سطر طلب جديد صريح ونملأه بالبيانات المعدلة القادمة من الـ Request
+        // وإذا لم يرسل الفرونت حقل معين، نأخذ قيمته الحالية من الصالة الأصلية كرمال ما ينزل السجل ناقص
+        $venueRequest = VenueRequest::create([
+            'user_id' => $user->id,
+            'venue_id' => $venue->id, // ربط الطلب بالصالة الحية المراد تعديلها
+            'type' => 'update',
+            'name' => $validated['name'] ?? $venue->name,
+            'capacity' => $validated['capacity'] ?? $venue->capacity,
+            'price' => $validated['price'] ?? $venue->price,
+            'address' => $validated['address'] ?? $venue->address,
+            'description' => $validated['description'] ?? $venue->description,
+            'status' => 'pending'
+        ]);
+
+        // 🔔 إشعار الأدمن
+        $admin = User::where('role', 'admin')->first();
+        if ($admin) {
+            $admin->notify(new NewVenueRequestNotification($venueRequest, 'update'));
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'تم إرسال طلب التعديل للأدمن بنجاح وبقيت الصالة القديمة نشطة حتى يوافق.',
+            'data' => $venueRequest
+        ], 200);
+    }
+
+    /**
+     * 3. دالة طلب حذف صالة
+     */
+    public function destroy(Request $request, $id)
+    {
+        $user = $request->user();
+        $venue = Venue::findOrFail($id);
+
+        if ($venue->user_id !== $user->id) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'ليس لديك صلاحية حذف هذه الصالة'
+            ], 403);
+        }
+
+        // عند الحذف، ننشئ طلب صريح نوعه delete، ونبقي بقية الحقول فارغة أو نأخذ الأساسية فقط
+        $venueRequest = VenueRequest::create([
+            'user_id' => $user->id,
+            'venue_id' => $venue->id,
+            'type' => 'delete',
+            'name' => $venue->name,
+            'capacity' => $venue->capacity,
+            'price' => $venue->price,
+            'address' => $venue->address,
+            'status' => 'pending'
+        ]);
+
+        // 🔔 إشعار الأدمن
+        $admin = User::where('role', 'admin')->first();
+        if ($admin) {
+            $admin->notify(new NewVenueRequestNotification($venueRequest, 'delete'));
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'تم تقديم طلب حذف الصالة للأدمن، وستبقى معروضة حتى يوافق على مسحها.'
+        ], 200);
     }
     /**
      * محرك البحث والفلترة للصالات بناءً على السعر، القدرة الاستيعابية، والموقع
