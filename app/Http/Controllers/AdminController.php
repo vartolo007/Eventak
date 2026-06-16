@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Service;
 use App\Models\User;
 use App\Models\Venue;
+use App\Models\Event;
 use App\Models\VenueRequest;
 use Illuminate\Http\Request;
 
@@ -240,6 +241,61 @@ class AdminController extends Controller
             'status' => 'success',
             'message' => $message,
             'data' => $venueRequest
+        ], 200);
+    }
+
+    /**
+     * 1. جلب وعرض قائمة كافة المستخدمين والملاك والموردين بالنظام
+     * (Users Management)
+     */
+    public function getAllUsers()
+    {
+        $users = User::orderBy('created_at', 'desc')->get();
+
+        return response()->json([
+            'status' => 'success',
+            'count' => $users->count(),
+            'data' => $users
+        ], 200);
+    }
+
+    /**
+     * 2. جلب كل الصالات الفعالة والمقبولة بالسيستم
+     * (Active Venues)
+     */
+    public function getActiveVenues()
+    {
+        // جلب الصالات التي حالتها active ومعها بيانات المالك الخاص بها
+        $venues = Venue::where('status', 'active')
+            ->with('owner:id,name,email,phone')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'count' => $venues->count(),
+            'data' => $venues
+        ], 200);
+    }
+
+    /**
+     * 3. تصفح ومراقبة كل الحفلات والمناسبات القائمة وحالاتها المالية
+     * (All Events & Monitoring)
+     */
+    public function getAllEvents()
+    {
+        // جلب كافة المناسبات مع تفاصيل الزبون، الصالة، الخدمات، والفاتورة المرتبطة بها
+        $events = Event::with([
+            'customer:id,name,phone',
+            'venue:id,name,price',
+            'services:id,name,price',
+            'invoice'
+        ])->orderBy('created_at', 'desc')->get();
+
+        return response()->json([
+            'status' => 'success',
+            'count' => $events->count(),
+            'data' => $events
         ], 200);
     }
 }

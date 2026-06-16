@@ -49,6 +49,10 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::put('/admin/venue-requests/{id}/approve', [AdminController::class, 'approveVenueRequest']); // موافقة
     Route::put('/admin/venue-requests/{id}/reject', [AdminController::class, 'rejectVenueRequest']);   // رفض
 
+    Route::get('/admin/users', [AdminController::class, 'getAllUsers']);         // عرض إدارة المستخدمين والموردين
+    Route::get('/admin/venues/active', [AdminController::class, 'getActiveVenues']); // عرض كل الصالات الفعالة
+    Route::get('/admin/events/all', [AdminController::class, 'getAllEvents']);   // تصفح ومراقبة كل الحفلات وفواتيرها
+
     // أي مسارات إضافية للآدمن مستقبلاً توضع هنا...
 });
 
@@ -93,7 +97,7 @@ Route::middleware(['auth:sanctum', 'isCustomer'])->group(function () {
 
 // مسارات المورد (Vendor Routes)
 Route::middleware(['auth:sanctum', 'isVendor'])->group(function () {
-// 🛠️ 1. مسارات إدارة الخدمات الخاصة بالمورد (إضافة، تعديل، طلب حذف)
+    // 🛠️ 1. مسارات إدارة الخدمات الخاصة بالمورد (إضافة، تعديل، طلب حذف)
     Route::post('/vendor/services', [VendorOrderController::class, 'store']);          // إضافة خدمة جديدة
     Route::post('/vendor/services/{id}', [VendorOrderController::class, 'update']);     // تعديل الخدمة (استخدمنا POST لدعم رفع الصور)
     Route::delete('/vendor/services/{id}', [VendorOrderController::class, 'destroy']);  // طلب حذف الخدمة
@@ -104,6 +108,8 @@ Route::middleware(['auth:sanctum', 'isVendor'])->group(function () {
     Route::put('/vendor/orders/{eventId}/services/{serviceId}/accept', [VendorOrderController::class, 'acceptService']); // قبول الخدمة
     Route::put('/vendor/orders/{eventId}/services/{serviceId}/reject', [VendorOrderController::class, 'rejectService']); // رفض الخدمة
 
+    // راوت استعراض شاشة "خدماتي وباقاتي" للمورد:
+    Route::get('/vendor/services', [VendorOrderController::class, 'myServices']);
 });
 
 

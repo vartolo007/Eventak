@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Event;
+use App\Models\Service;
 use App\Models\Venue;
 use App\Notifications\EventApprovedNotification;
 use App\Notifications\EventRejectedNotification;
@@ -70,10 +71,10 @@ class VenueOrderController extends Controller
         $event->save();
 
         $customer = $event->customer; // تأكد أن علاقة customer معرفة في موديل Event
-    if ($customer) {
-        // نستخدم كلاس إشعار القبول ليخبر الزبون بالتحديث الجديد
-        $customer->notify(new EventApprovedNotification($event));
-    }
+        if ($customer) {
+            // نستخدم كلاس إشعار القبول ليخبر الزبون بالتحديث الجديد
+            $customer->notify(new EventApprovedNotification($event));
+        }
 
         return response()->json([
             'status' => 'success',
@@ -118,7 +119,7 @@ class VenueOrderController extends Controller
         $event->rejection_reason = $request->rejection_reason;
         $event->save();
 
-         $customer = $event->customer;
+        $customer = $event->customer;
         if ($customer) {
             $customer->notify(new EventRejectedNotification($event));
         }
@@ -127,6 +128,27 @@ class VenueOrderController extends Controller
             'status' => 'success',
             'message' => 'تم رفض طلب الحجز بنجاح وتدوين السبب للزبون.',
             'data' => $event
+        ], 200);
+    }
+
+    /**
+     * جلب واستعراض كافة الخدمات والباقات الخاصة بالمورد الحالي
+     * (My Services)
+     */
+    public function myServices(Request $request)
+    {
+        $user = $request->user();
+
+        // جلب خدمات المورد الحالي وتصنيفاتها
+        $services = Service::where('vendor_id', $user->id)
+            ->with('category:id,name')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'count' => $services->count(),
+            'data' => $services
         ], 200);
     }
 }
