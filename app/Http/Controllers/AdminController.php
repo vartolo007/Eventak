@@ -144,7 +144,6 @@ class AdminController extends Controller
         ], 200);
     }
 
-
     public function approveVenueRequest($requestId)
     {
         $venueRequest = VenueRequest::findOrFail($requestId);
@@ -156,13 +155,14 @@ class AdminController extends Controller
         // 1. موافقة على إضافة صالة جديدة كلياً
         if ($venueRequest->type === 'create') {
             Venue::create([
-                'user_id' => $venueRequest->user_id,
-                'name' => $venueRequest->name,
-                'capacity' => $venueRequest->capacity,
-                'price' => $venueRequest->price,
-                'address' => $venueRequest->address,
+                'owner_id'    => $venueRequest->owner_id, // 👈 تعديل الاسم ليطابق الـ Migration (owner_id)
+                'name'        => $venueRequest->name,
+                'capacity'    => $venueRequest->capacity,
+                'price'       => $venueRequest->price,
+                'address'     => $venueRequest->address,
                 'description' => $venueRequest->description,
-                'status' => 'active'
+                'cover_image' => $venueRequest->cover_image, // 👈 إضافة الحقول لكي لا تضيع الصور عند النقل
+                'images'      => $venueRequest->images,
             ]);
         }
 
@@ -170,11 +170,13 @@ class AdminController extends Controller
         if ($venueRequest->type === 'update') {
             $venue = Venue::findOrFail($venueRequest->venue_id);
             $venue->update([
-                'name' => $venueRequest->name,
-                'capacity' => $venueRequest->capacity,
-                'price' => $venueRequest->price,
-                'address' => $venueRequest->address,
+                'name'        => $venueRequest->name,
+                'capacity'    => $venueRequest->capacity,
+                'price'       => $venueRequest->price,
+                'address'     => $venueRequest->address,
                 'description' => $venueRequest->description,
+                'cover_image' => $venueRequest->cover_image,
+                'images'      => $venueRequest->images,
             ]);
         }
 
@@ -184,7 +186,7 @@ class AdminController extends Controller
             $venue->delete();
         }
 
-        // تحديث حالة الطلب نفسه ليصبح مقبولاً وينتهي من القائمة المعلقة
+        // تحديث حالة الطلب نفسه في جدول الطلبات (حيث يوجد حقل status كـ enum فعلياً)
         $venueRequest->update(['status' => 'approved']);
 
         return response()->json([
@@ -197,12 +199,12 @@ class AdminController extends Controller
     /**
      * دالة رفض طلبات الصالات (سواء رفض إضافة، رفض تعديل، أو رفض حذف)
      */
-    public function rejectVenueRequest($requestId)
+    public function rejectVenueRequest(Request $request, $requestId)
     {
-        // جلب سطر الطلب من جدول الطلبات المؤقت
+        // 1. جلب سطر الطلب من جدول الطلبات المؤقت
         $venueRequest = VenueRequest::findOrFail($requestId);
 
-        // التأكد من أن الطلب ما زال معلقاً ولم يتم البت فيه سابقاً
+        // 2. التأكد من أن الطلب ما زال معلقاً ولم يتم البت فيه سابقاً
         if ($venueRequest->status !== 'pending') {
             return response()->json([
                 'status' => 'error',
@@ -210,23 +212,28 @@ class AdminController extends Controller
             ], 400);
         }
 
-        // تحديث حالة الطلب في جدول الـ requests إلى 'rejected'
-        $venueRequest->update(['status' => 'rejected']);
+        // 3. التحقق من استقبال سبب الرفض إجبارياً بحسب الـ UI Flow
+        $validated = $request->validate([
+            'admin_notes' => 'required|string|max:1000'
+        ]);
+
+        // 4. تحديث حالة الطلب وحفظ سبب الرفض في جدول الـ requests
+        $venueRequest->update([
+            'status' => 'rejected',
+            'admin_notes' => $validated['admin_notes'] // 👈 حفظ السبب ليراه صاحب الصالة ببروفايله
+        ]);
 
         // 💡 المنطق البرمجي للرفض بحسب نوع الطلب:
         switch ($venueRequest->type) {
             case 'create':
-                // في حال رفض إضافة صالة جديدة: لا نلمس جدول الـ venues نهائياً (وكأن شيئاً لم يكن).
                 $message = 'تم رفض طلب إنشاء الصالة بنجاح، ولن تظهر في النظام.';
                 break;
 
             case 'update':
-                // في حال رفض التعديل: الصالة الأصلية الحية في جدول الـ venues تبقى كما هي ببياناتها القديمة المستقرة.
                 $message = 'تم رفض طلب التعديل، وبقيت بيانات الصالة الأصلية الحية دون أي تغيير.';
                 break;
 
             case 'delete':
-                // في حال رفض الحذف: الصالة الأصلية الحية في جدول الـ venues تبقى نشطة ومتوفرة للزبائن ويتم إلغاء فكرة الحذف.
                 $message = 'تم رفض طلب الحذف، وظلت الصالة نشطة ومتاحة للحجوزات في التطبيق.';
                 break;
 
@@ -265,9 +272,8 @@ class AdminController extends Controller
      */
     public function getActiveVenues()
     {
-        // جلب الصالات التي حالتها active ومعها بيانات المالك الخاص بها
-        $venues = Venue::where('status', 'active')
-            ->with('owner:id,name,email,phone')
+        // 💡 تم حذف ->where('status', 'active') لأن وجود السجل بجدول venues يعني أنه فعال تلقائياً
+        $venues = Venue::with('owner:id,name,email,phone') // 👈 تأكد من وجود علاقة owner داخل موديل Venue
             ->orderBy('created_at', 'desc')
             ->get();
 
