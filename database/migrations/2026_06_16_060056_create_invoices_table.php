@@ -10,11 +10,11 @@ return new class extends Migration
     {
         Schema::create('invoices', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('event_id')->constrained('events')->onDelete('cascade');
+            $table->foreignId('event_id')->nullable()->constrained('events')->onDelete('cascade');
             $table->decimal('venue_price', 10, 2);
             $table->decimal('services_total', 10, 2)->default(0);
             $table->decimal('total_amount', 10, 2);
-            $table->enum('status', ['pending', 'paid', 'failed'])->default('pending');
+            $table->enum('status', ['pending', 'paid', 'failed', 'refunded'])->default('pending');
             $table->timestamps();
         });
     }

@@ -5,7 +5,7 @@ namespace App\Notifications;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
-class EventApprovedNotification extends Notification
+class EventConfirmedNotification extends Notification
 {
     use Queueable;
     protected $event;
@@ -17,9 +17,9 @@ class EventApprovedNotification extends Notification
     public function toArray($notifiable): array {
         return [
             'event_id' => $this->event->id,
-            'title' => 'تأكيد الحجز الخاص بك',
-            'message' => "تمت الموافقة على حجز الصالة لمناسبتك بتاريخ {$this->event->date}، والطلب الآن قيد التنسيق مع الموردين لتجهيز الخدمات.",
-            'type' => 'booking_approved'
+            'title' => 'حجزك مؤكد وجاهز للدفع ✅',
+            'message' => "اكتملت الموافقات على مناسبتك ({$this->event->event_name}) بتاريخ {$this->event->date}، وأصبح الحجز مؤكداً بالكامل وبانتظار دفع الفاتورة لاعتماده.",
+            'type' => 'booking_confirmed'
         ];
     }
 }

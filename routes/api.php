@@ -13,6 +13,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\VendorOrderController;
+use App\Http\Controllers\RatingController;
 
 // مسارات غير محمية (يمكن لأي شخص الوصول إليها)
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -60,6 +61,8 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
 Route::get('/services', [ServiceController::class, 'index']);             // عرض كافة الخدمات مع الفلترة
 Route::get('/services/categories', [ServiceController::class, 'categories']); // عرض تصنيفات الخدمات
 Route::get('/services/{id}', [ServiceController::class, 'show']);         // عرض تفاصيل خدمة واحدة
+Route::get('/venues/search', [VenueController::class, 'search']);         // البحث والفلترة في الصالات (متاح للضيوف أيضاً)
+Route::get('/venues/{venueId}/ratings', [RatingController::class, 'venueRatings']); // ⭐ عرض تقييمات صالة معينة مع المعدل
 
 
 // حماية المسار بـ Sanctum والـ Middleware الخاص بصاحب الصالة (venue_owner)
@@ -74,6 +77,7 @@ Route::middleware(['auth:sanctum', 'isVenueOwner'])->group(function () {
     Route::get('/venue-owner/events', [VenueOrderController::class, 'ownerIndex']);
     Route::put('/venue-owner/events/{id}/accept', [VenueOrderController::class, 'accept']);
     Route::put('/venue-owner/events/{id}/reject', [VenueOrderController::class, 'reject']);
+    Route::put('/venue-owner/events/{id}/complete', [VenueOrderController::class, 'complete']);
 });
 
 
@@ -86,13 +90,17 @@ Route::middleware(['auth:sanctum', 'isCustomer'])->group(function () {
     Route::get('/customer/events', [CustomerEventController::class, 'myRequests']);
     Route::get('/customer/events/{id}', [CustomerEventController::class, 'showRequest']);
 
+    // إلغاء الحجز (مع استرجاع متدرج للمبلغ إذا كان مدفوعاً: +7أيام=100%، 48س-7أيام=50%، أقل=0%)
+    Route::put('/customer/events/{id}/cancel', [CustomerEventController::class, 'cancel']);
+
     // 💳 مسارات الدفع والوصولات المالية للزبون:
     Route::post('/customer/payments', [PaymentController::class, 'store']);                    // إجراء عملية دفع جديدة
     Route::get('/customer/payments/{id}', [PaymentController::class, 'show']);                 // عرض تفاصيل وصل دفع معين
     Route::get('/customer/invoices/{invoiceId}/payment', [PaymentController::class, 'byInvoice']); // عرض دفع متعلق بفاتورة معينة
 
-    // البحث والفلترة
-    Route::get('/venues/search', [VenueController::class, 'search']);
+    // ⭐ مسارات التقييمات (بعد اكتمال المناسبة)
+    Route::post('/customer/events/{eventId}/rating', [RatingController::class, 'store']); // إضافة تقييم لمناسبة مكتملة
+    Route::get('/customer/events/{eventId}/rating', [RatingController::class, 'show']);   // عرض تقييمي لمناسبة معينة
 });
 
 // مسارات المورد (Vendor Routes)

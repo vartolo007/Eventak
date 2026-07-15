@@ -14,8 +14,10 @@ return new class extends Migration
             $table->string('transaction_id')->nullable();
             $table->string('payment_method');
             $table->decimal('amount', 10, 2);
-            $table->enum('status', ['pending', 'success', 'failed'])->default('pending');
+            $table->decimal('refund_amount', 10, 2)->nullable(); // المبلغ المسترجع فعلياً عند إلغاء الزبون (حسب سياسة الاسترجاع المتدرجة)
+            $table->enum('status', ['pending', 'success', 'failed', 'refunded'])->default('pending');
             $table->timestamp('paid_at')->nullable();
+            $table->timestamp('refunded_at')->nullable();
             $table->timestamps();
         });
     }

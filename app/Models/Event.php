@@ -12,7 +12,7 @@ class Event extends Model
     protected $fillable = [
         'customer_id',
         'event_name',
-        'event_type_id',
+        'event_type',
         'venue_id',
         'date',
         'start_time',
@@ -62,6 +62,12 @@ class Event extends Model
     public function eventServices()
     {
         return $this->hasMany(EventService::class, 'event_id');
+    }
+
+    // علاقة المناسبة بتقييم الزبون (تقييم واحد لكل مناسبة)
+    public function rating()
+    {
+        return $this->hasOne(Rating::class, 'event_id');
     }
 
 

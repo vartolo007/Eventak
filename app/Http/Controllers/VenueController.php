@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Venue;
 use App\Models\VenueRequest;
 use App\Models\User;
@@ -23,19 +24,35 @@ class VenueController extends Controller
             'price' => 'required|numeric|min:0',
             'address' => 'required|string',
             'description' => 'nullable|string',
+            'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'images' => 'nullable|array',
+            'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
-        // هنا نستخدم الحقول الصريحة داخل جدول الـ requests كما هي في قاعدة بياناتك
+        $coverImagePath = null;
+        if ($request->hasFile('cover_image')) {
+            $coverImagePath = $request->file('cover_image')->store('venues', 'public');
+        }
+
+        $imagesPath = [];
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+                $imagesPath[] = $image->store('venues', 'public');
+            }
+        }
+
         $venueRequest = VenueRequest::create([
-            'user_id' => $user->id,
-            'venue_id' => null, // صالة جديدة
+            'owner_id' => $user->id,
+            'venue_id' => null,
             'type' => 'create',
             'name' => $validated['name'],
             'capacity' => $validated['capacity'],
             'price' => $validated['price'],
             'address' => $validated['address'],
             'description' => $validated['description'] ?? null,
-            'status' => 'pending' // معلق بانتظار الأدمن
+            'cover_image' => $coverImagePath,
+            'images' => !empty($imagesPath) ? $imagesPath : null,
+            'status' => 'pending',
         ]);
 
         // 🔔 إشعار الأدمن في الداتابيز
@@ -59,7 +76,7 @@ class VenueController extends Controller
         $user = $request->user();
         $venue = Venue::findOrFail($id); // الصالة الأصلية الحية
 
-        if ($venue->user_id !== $user->id) {
+        if ($venue->owner_id !== $user->id) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'ليس لديك صلاحية تعديل بيانات هذه الصالة'
@@ -72,20 +89,39 @@ class VenueController extends Controller
             'price' => 'sometimes|numeric|min:0',
             'address' => 'sometimes|string',
             'description' => 'nullable|string',
+            'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'images' => 'nullable|array',
+            'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
-        // نفتح سطر طلب جديد صريح ونملأه بالبيانات المعدلة القادمة من الـ Request
-        // وإذا لم يرسل الفرونت حقل معين، نأخذ قيمته الحالية من الصالة الأصلية كرمال ما ينزل السجل ناقص
+        $coverImagePath = $venue->cover_image;
+        if ($request->hasFile('cover_image')) {
+            if ($venue->cover_image) {
+                Storage::disk('public')->delete($venue->cover_image);
+            }
+            $coverImagePath = $request->file('cover_image')->store('venues', 'public');
+        }
+
+        $imagesPath = $venue->images ?? [];
+        if ($request->hasFile('images')) {
+            $imagesPath = [];
+            foreach ($request->file('images') as $image) {
+                $imagesPath[] = $image->store('venues', 'public');
+            }
+        }
+
         $venueRequest = VenueRequest::create([
-            'user_id' => $user->id,
-            'venue_id' => $venue->id, // ربط الطلب بالصالة الحية المراد تعديلها
+            'owner_id' => $user->id,
+            'venue_id' => $venue->id,
             'type' => 'update',
             'name' => $validated['name'] ?? $venue->name,
             'capacity' => $validated['capacity'] ?? $venue->capacity,
             'price' => $validated['price'] ?? $venue->price,
             'address' => $validated['address'] ?? $venue->address,
             'description' => $validated['description'] ?? $venue->description,
-            'status' => 'pending'
+            'cover_image' => $coverImagePath,
+            'images' => !empty($imagesPath) ? $imagesPath : null,
+            'status' => 'pending',
         ]);
 
         // 🔔 إشعار الأدمن
@@ -109,7 +145,7 @@ class VenueController extends Controller
         $user = $request->user();
         $venue = Venue::findOrFail($id);
 
-        if ($venue->user_id !== $user->id) {
+        if ($venue->owner_id !== $user->id) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'ليس لديك صلاحية حذف هذه الصالة'
@@ -118,7 +154,7 @@ class VenueController extends Controller
 
         // عند الحذف، ننشئ طلب صريح نوعه delete، ونبقي بقية الحقول فارغة أو نأخذ الأساسية فقط
         $venueRequest = VenueRequest::create([
-            'user_id' => $user->id,
+            'owner_id' => $user->id,
             'venue_id' => $venue->id,
             'type' => 'delete',
             'name' => $venue->name,
@@ -145,7 +181,7 @@ class VenueController extends Controller
     public function search(Request $request)
     {
         // ابدأ بالاستعلام الأساسي للصالات
-        $query = Venue::query();
+        $query = Venue::where('status', 'active');
 
         // 1. الفلترة حسب الاسم أو العنوان (البحث النصي)
         if ($request->has('search')) {

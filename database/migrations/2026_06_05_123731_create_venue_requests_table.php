@@ -20,6 +20,9 @@ return new class extends Migration
             // ربط الطلب بالصالة الأساسية (يكون Null إذا كان أول مرة ينشئ صالة)
             $table->foreignId('venue_id')->nullable()->constrained('venues')->onDelete('cascade');
 
+            // نوع الطلب: create (صالة جديدة)، update (تعديل)، delete (حذف)
+            $table->enum('type', ['create', 'update', 'delete'])->default('create');
+
             // البيانات المقترحة والمطلوب مراجعتها من الأدمن
             $table->string('name');
             $table->text('address');

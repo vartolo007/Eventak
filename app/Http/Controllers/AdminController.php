@@ -156,13 +156,15 @@ class AdminController extends Controller
         // 1. موافقة على إضافة صالة جديدة كلياً
         if ($venueRequest->type === 'create') {
             Venue::create([
-                'user_id' => $venueRequest->user_id,
+                'owner_id' => $venueRequest->owner_id,
                 'name' => $venueRequest->name,
                 'capacity' => $venueRequest->capacity,
                 'price' => $venueRequest->price,
                 'address' => $venueRequest->address,
                 'description' => $venueRequest->description,
-                'status' => 'active'
+                'cover_image' => $venueRequest->cover_image,
+                'images' => $venueRequest->images,
+                'status' => 'active',
             ]);
         }
 
@@ -175,6 +177,8 @@ class AdminController extends Controller
                 'price' => $venueRequest->price,
                 'address' => $venueRequest->address,
                 'description' => $venueRequest->description,
+                'cover_image' => $venueRequest->cover_image,
+                'images' => $venueRequest->images,
             ]);
         }
 
