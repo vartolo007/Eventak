@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Models\Event;
 use App\Models\Venue;
 use App\Models\Service;
 use App\Models\Invoice;
+use App\Models\Payment;
 use Carbon\Carbon;
 use App\Notifications\NewEventNotification;
+use App\Notifications\EventCancelledByCustomerNotification;
 use App\Notifications\EventApprovedNotification;
 use App\Notifications\EventRejectedNotification;
 
@@ -113,43 +116,49 @@ class CustomerEventController extends Controller
             }
         }
 
-        // إنشاء الفاتورة
-        $invoice = Invoice::create([
-            'venue_price' => $venue->price,
-            'services_total' => $totalPrice - $venue->price,
-            'total_amount' => $totalPrice,
-            'status' => 'pending'
-        ]);
+        // إنشاء الفاتورة والمناسبة وربط الخدمات ضمن Transaction واحدة
+        // (لو فشلت أي خطوة يتراجع كل شيء معاً ولا تبقى فاتورة يتيمة بلا مناسبة)
+        [$invoice, $event] = DB::transaction(function () use ($request, $user, $venue, $totalPrice, $servicesData) {
+            // إنشاء الفاتورة
+            $invoice = Invoice::create([
+                'venue_price' => $venue->price,
+                'services_total' => $totalPrice - $venue->price,
+                'total_amount' => $totalPrice,
+                'status' => 'pending'
+            ]);
 
-        // إنشاء المناسبة
-        $event = Event::create([
-            'customer_id' => $user->id,
-            'event_name' => $request->event_name,
-            'event_type' => $request->event_type,
-            'venue_id' => $venue->id,
-            'date' => $request->date,
-            'start_time' => $request->start_time,
-            'end_time' => $request->end_time,
-            'guests_count' => $request->guests_count,
-            'total_price' => $totalPrice,
-            'note' => $request->note,
-            'invoice_id' => $invoice->id,
-            'status' => 'pending'
-        ]);
+            // إنشاء المناسبة
+            $event = Event::create([
+                'customer_id' => $user->id,
+                'event_name' => $request->event_name,
+                'event_type' => $request->event_type,
+                'venue_id' => $venue->id,
+                'date' => $request->date,
+                'start_time' => $request->start_time,
+                'end_time' => $request->end_time,
+                'guests_count' => $request->guests_count,
+                'total_price' => $totalPrice,
+                'note' => $request->note,
+                'invoice_id' => $invoice->id,
+                'status' => 'pending'
+            ]);
 
-        // ربط الخدمات بالمناسبة
-        if (!empty($servicesData)) {
-            foreach ($servicesData as $service) {
-                $event->services()->attach($service['service_id'], [
-                    'quantity' => $service['quantity'],
-                    'price' => $service['price'],
-                    'status' => 'pending'
-                ]);
+            // ربط الخدمات بالمناسبة
+            if (!empty($servicesData)) {
+                foreach ($servicesData as $service) {
+                    $event->services()->attach($service['service_id'], [
+                        'quantity' => $service['quantity'],
+                        'price' => $service['price'],
+                        'status' => 'pending'
+                    ]);
+                }
             }
-        }
 
-        // تحديث الفاتورة بـ event_id
-        $invoice->update(['event_id' => $event->id]);
+            // تحديث الفاتورة بـ event_id
+            $invoice->update(['event_id' => $event->id]);
+
+            return [$invoice, $event];
+        });
 
         // إرسال إشعار لصاحب الصالة
         $venueOwner = $venue->owner;
@@ -218,5 +227,124 @@ class CustomerEventController extends Controller
             'status' => 'success',
             'data' => $eventRequest
         ]);
+    }
+
+
+    /**
+     * 3. إلغاء الحجز من قبل الزبون (مع استرجاع متدرج للمبلغ إذا كان مدفوعاً)
+     *
+     * سياسة الاسترجاع للحجوزات المدفوعة:
+     * - أكثر من 7 أيام قبل المناسبة  -> استرجاع 100%
+     * - بين 48 ساعة و 7 أيام          -> استرجاع 50%
+     * - أقل من 48 ساعة                -> الإلغاء مسموح بدون أي استرجاع
+     */
+    public function cancel(Request $request, $id)
+    {
+        $user = $request->user();
+
+        $event = Event::with(['venue.owner', 'invoice'])
+            ->where('customer_id', $user->id)
+            ->where('id', $id)
+            ->first();
+
+        if (!$event) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'عذراً، الحجز غير موجود أو لا تملك صلاحية الوصول إليه.'
+            ], 404);
+        }
+
+        // لا يمكن إلغاء حجز مكتمل أو ملغى مسبقاً
+        if (in_array($event->status, ['completed', 'cancelled'])) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'لا يمكن إلغاء هذا الحجز لأنه مكتمل أو ملغى بالفعل.'
+            ], 422);
+        }
+
+        $refundAmount = null;
+        $refundPercent = null;
+
+        // إذا كان الحجز مدفوعاً نحسب المبلغ المسترجع بحسب الوقت المتبقي على المناسبة
+        if ($event->status === 'paid') {
+            $eventStart = Carbon::parse($event->date . ' ' . $event->start_time);
+            $hoursLeft = now()->diffInHours($eventStart, false);
+
+            if ($hoursLeft >= 168) {          // أكثر من 7 أيام
+                $refundPercent = 100;
+            } elseif ($hoursLeft >= 48) {     // بين 48 ساعة و 7 أيام
+                $refundPercent = 50;
+            } else {                          // أقل من 48 ساعة (أو موعد فائت)
+                $refundPercent = 0;
+            }
+
+            $payment = Payment::where('invoice_id', $event->invoice_id)
+                ->where('status', 'success')
+                ->first();
+
+            if (!$payment) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'تعذر العثور على سجل الدفع المرتبط بهذا الحجز، يرجى مراجعة الإدارة.'
+                ], 422);
+            }
+
+            $refundAmount = round($payment->amount * $refundPercent / 100, 2);
+
+            DB::transaction(function () use ($event, $payment, $refundAmount, $refundPercent) {
+                // تحديث سجل الدفع: refunded مع توثيق المبلغ المسترجع (سيميوليشن)
+                if ($refundAmount > 0) {
+                    $payment->update([
+                        'status' => 'refunded',
+                        'refund_amount' => $refundAmount,
+                        'refunded_at' => now(),
+                    ]);
+                    $event->invoice->update(['status' => 'refunded']);
+                }
+                // إذا كان الاسترجاع 0% يبقى الدفع success والفاتورة paid (المبلغ محتجز بالكامل)
+
+                $event->update([
+                    'status' => 'cancelled',
+                    'rejection_reason' => "ألغى الزبون الحجز، ونسبة الاسترجاع المطبقة {$refundPercent}% بحسب سياسة الإلغاء."
+                ]);
+            });
+        } else {
+            // حجز غير مدفوع بعد (pending / vendor_pending / confirmed): إلغاء مباشر
+            $event->update([
+                'status' => 'cancelled',
+                'rejection_reason' => 'ألغى الزبون الحجز قبل الدفع.'
+            ]);
+        }
+
+        // 🔔 إشعار صاحب الصالة بالإلغاء
+        $venueOwner = $event->venue?->owner;
+        if ($venueOwner) {
+            $venueOwner->notify(new EventCancelledByCustomerNotification($event, $refundAmount));
+        }
+
+        // 🔔 إشعار كل مورد مشارك بخدمات هذه المناسبة (مرة واحدة لكل مورد)
+        $vendors = $event->services()->with('vendor')->get()
+            ->pluck('vendor')
+            ->filter()
+            ->unique('id');
+
+        foreach ($vendors as $vendor) {
+            $vendor->notify(new EventCancelledByCustomerNotification($event, $refundAmount));
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => is_null($refundPercent)
+                ? 'تم إلغاء الحجز بنجاح.'
+                : ($refundAmount > 0
+                    ? "تم إلغاء الحجز بنجاح، وسيتم استرجاع مبلغ ({$refundAmount}) أي ما يعادل {$refundPercent}% من قيمة الفاتورة."
+                    : 'تم إلغاء الحجز بنجاح، ولا يوجد مبلغ مسترجع لأن الإلغاء تم قبل أقل من 48 ساعة من الموعد.'),
+            'data' => [
+                'event_id' => $event->id,
+                'event_status' => $event->status,
+                'refund_percent' => $refundPercent,
+                'refund_amount' => $refundAmount,
+            ]
+        ], 200);
     }
 }

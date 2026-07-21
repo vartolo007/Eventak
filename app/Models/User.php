@@ -55,12 +55,6 @@ class User extends Authenticatable
         ];
     }
 
-    public function otpCodes()
-    {
-        return $this->hasMany(OtpCode::class);
-    }
-
-
     // علاقة المستخدم بـ المناسبات كزبون
     public function events()
     {

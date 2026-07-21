@@ -7,6 +7,7 @@ use App\Models\Event;
 use App\Models\Service;
 use App\Models\Venue;
 use App\Notifications\EventApprovedNotification;
+use App\Notifications\EventConfirmedNotification;
 use App\Notifications\EventRejectedNotification;
 
 class VenueOrderController extends Controller
@@ -18,19 +19,19 @@ class VenueOrderController extends Controller
     {
         $user = $request->user();
 
-        // جلب الصالة التي يملكها هذا المستخدم
-        $venue = Venue::where('owner_id', $user->id)->first();
+        // جلب كل الصالات التي يملكها هذا المستخدم (قد يملك أكثر من صالة)
+        $venueIds = Venue::where('owner_id', $user->id)->pluck('id');
 
-        if (!$venue) {
+        if ($venueIds->isEmpty()) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'لم يتم العثور على صالة مسجلة باسمك بعد.'
             ], 404);
         }
 
-        // جلب جميع المناسبات المرتبطة بهذه الصالة مع بيانات الزبون الذي حجزها
-        $events = Event::where('venue_id', $venue->id)
-            ->with('customer:id,name,email,phone') // جلب بيانات الزبون الأساسية
+        // جلب جميع المناسبات المرتبطة بكل صالاته مع بيانات الزبون الذي حجزها
+        $events = Event::whereIn('venue_id', $venueIds)
+            ->with(['customer:id,name,email,phone', 'venue:id,name']) // جلب بيانات الزبون واسم الصالة
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -66,19 +67,25 @@ class VenueOrderController extends Controller
             ], 422);
         }
 
-        // تحديث الحالة بحسب الـ Workflow المطلوبة
-        $event->status = 'vendor_pending';
+        // تحديث الحالة بحسب الـ Workflow المطلوبة:
+        // إذا كانت المناسبة تحتوي خدمات ننتظر موافقة الموردين، وإلا تصبح مؤكدة مباشرة وجاهزة للدفع
+        $hasServices = $event->services()->exists();
+        $event->status = $hasServices ? 'vendor_pending' : 'confirmed';
         $event->save();
 
         $customer = $event->customer; // تأكد أن علاقة customer معرفة في موديل Event
         if ($customer) {
-            // نستخدم كلاس إشعار القبول ليخبر الزبون بالتحديث الجديد
-            $customer->notify(new EventApprovedNotification($event));
+            // إشعار القبول عند انتظار الموردين، أو إشعار التأكيد الجاهز للدفع إن لم توجد خدمات
+            $customer->notify($hasServices
+                ? new EventApprovedNotification($event)
+                : new EventConfirmedNotification($event));
         }
 
         return response()->json([
             'status' => 'success',
-            'message' => 'تم قبول طلب الحجز بنجاح، وتم تحويل الحالة إلى بانتظار الموردين (vendor_pending).',
+            'message' => $hasServices
+                ? 'تم قبول طلب الحجز بنجاح، وتم تحويل الحالة إلى بانتظار الموردين (vendor_pending).'
+                : 'تم قبول طلب الحجز بنجاح، ولعدم وجود خدمات مطلوبة أصبح الحجز مؤكداً (confirmed) وجاهزاً للدفع مباشرة.',
             'data' => $event
         ], 200);
     }
@@ -106,11 +113,12 @@ class VenueOrderController extends Controller
             ], 403);
         }
 
-        // منع رفض الطلبات المنتهية أو الملغاة مسبقاً
-        if (in_array($event->status, ['cancelled', 'completed'])) {
+        // منع رفض الطلبات المدفوعة أو المنتهية أو الملغاة مسبقاً
+        // (الحجز المدفوع لا يمكن رفضه لعدم وجود آلية استرجاع مبلغ حالياً)
+        if (in_array($event->status, ['paid', 'cancelled', 'completed'])) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'لا يمكن رفض هذا الطلب لأنه ملغى أو مكتمل بالفعل.'
+                'message' => 'لا يمكن رفض هذا الطلب لأنه مدفوع أو ملغى أو مكتمل بالفعل.'
             ], 422);
         }
 
@@ -132,23 +140,33 @@ class VenueOrderController extends Controller
     }
 
     /**
-     * جلب واستعراض كافة الخدمات والباقات الخاصة بالمورد الحالي
-     * (My Services)
+     * 4. تعليم المناسبة كمكتملة بعد انتهائها فعلياً (من قبل صاحب الصالة)
      */
-    public function myServices(Request $request)
+    public function complete(Request $request, $id)
     {
         $user = $request->user();
+        $event = Event::with('venue')->findOrFail($id);
 
-        // جلب خدمات المورد الحالي وتصنيفاتها
-        $services = Service::where('vendor_id', $user->id)
-            ->with('category:id,name')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        if (!$event->venue || $event->venue->owner_id !== $user->id) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'غير مصرح لك باتخاذ قرار بشأن هذا الحجز.'
+            ], 403);
+        }
+
+        if ($event->status !== 'paid') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'لا يمكن إغلاق المناسبة إلا بعد اكتمال الدفع.'
+            ], 422);
+        }
+
+        $event->update(['status' => 'completed']);
 
         return response()->json([
             'status' => 'success',
-            'count' => $services->count(),
-            'data' => $services
+            'message' => 'تم تعليم المناسبة كمكتملة بنجاح.',
+            'data' => $event
         ], 200);
     }
 }

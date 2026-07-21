@@ -21,6 +21,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->string('cover_image')->nullable(); // صورة الغلاف الأساسية للمهمة الأولى
             $table->json('images')->nullable();       // مصفوفة الصور الإضافية للـ تاسك القادم
+            $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();
         });
     }

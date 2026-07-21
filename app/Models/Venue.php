@@ -17,7 +17,8 @@ class Venue extends Model
         'price',
         'description',
         'cover_image',
-        'images'
+        'images',
+        'status'
     ];
 
     // تحويل حقل الـ JSON الخاص بالصور الإضافية إلى مصفوفة PHP تلقائياً

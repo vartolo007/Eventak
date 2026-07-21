@@ -22,8 +22,8 @@ return new class extends Migration
             $table->time('end_time');
             $table->integer('guests_count');
             $table->decimal('total_price', 10, 2)->default(0.00); // السعر المحسوب برمجياً
-            $table->foreignId('invoice_id')->nullable()->constrained('invoices')->onDelete('set null');
-             $table->foreignId('payment_id')->nullable()->constrained('payments')->onDelete('set null');
+            $table->unsignedBigInteger('invoice_id')->nullable();
+            $table->unsignedBigInteger('payment_id')->nullable();
             $table->text('note')->nullable();
             // إدارة الحالات مدمجة بالكامل هنا لتسهيل الـ Workflow
             $table->enum('status', ['pending', 'venue_pending', 'vendor_pending', 'confirmed', 'paid', 'completed', 'cancelled'])->default('pending');

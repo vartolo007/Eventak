@@ -16,7 +16,8 @@ return new class extends Migration
             $table->text('description');
             $table->decimal('price', 10, 2);
             $table->json('images')->nullable();
-            $table->enum('status', ['active', 'inactive'])->default('active');
+            // pending: بانتظار موافقة الأدمن، pending_delete: طلب حذف بانتظار الموافقة
+            $table->enum('status', ['pending', 'pending_delete', 'active', 'inactive'])->default('pending');
             $table->timestamps();
         });
     }

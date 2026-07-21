@@ -5,8 +5,6 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Service;
 use App\Models\ServiceCategory;
-use App\Models\User;
-use App\Notifications\NewServiceRequestNotification;
 
 class ServiceController extends Controller
 {
@@ -57,7 +55,7 @@ class ServiceController extends Controller
     // عرض خدمة واحدة (تأكد أنها نشطة أو تخص المورد نفسه)
     public function show($id)
     {
-        $service = Service::with('vendor', 'category')->findOrFail($id);
+        $service = Service::where('status', 'active')->with('vendor', 'category')->findOrFail($id);
 
         return response()->json([
             'status' => 'success',

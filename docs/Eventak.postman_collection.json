@@ -1,0 +1,2479 @@
+{
+  "info": {
+    "name": "Eventak API — كولكشن كاملة مع داتا جاهزة",
+    "description": "# كولكشن Eventak الكاملة 🎉\n\n## قبل ما تبدأ (مرة وحدة)\n1. شغّل XAMPP (MySQL) ثم بمجلد المشروع:\n```\ncomposer install\nphp artisan key:generate\nphp artisan migrate\nphp artisan db:seed\nphp artisan db:seed --class=AdminSeeder\nphp artisan serve\n```\n2. الـ base_url جاهز على http://127.0.0.1:8000/api — عدّله من متغيرات الكولكشن إذا لزم.\n\n## الحسابات الجاهزة\n| الدور | الإيميل | الدخول |\n|---|---|---|\n| زبون | customer@eventak.com | password123 |\n| أدمن | admin@eventak.com | admin12345 |\n| مورد تصوير | vendor.photo@eventak.com | OTP |\n| مورد دي جي | vendor.dj@eventak.com | OTP |\n| مورد بوفيه | vendor.buffet@eventak.com | OTP |\n| مورد ديكور | vendor.decor@eventak.com | OTP |\n| مالك قاعة الماسة | owner.diamond@eventak.com | OTP |\n| مالك قاعة اللؤلؤة | owner.pearl@eventak.com | OTP |\n\n## جلب رمز الـ OTP (الإيميلات التجريبية وهمية)\nبعد طلب Send OTP نفّذ بترمينال المشروع:\n```\nphp artisan tinker --execute=\"echo \\App\\Models\\User::where('email','vendor.photo@eventak.com')->first()->otp_code;\"\n```\nأو اختصار — ولّد توكن مباشرة بدون OTP وحطه بمتغير الكولكشن المناسب:\n```\nphp artisan tinker --execute=\"echo \\App\\Models\\User::find(1)->createToken('postman')->plainTextToken;\"\n```\n\n## السيناريو الكامل بالترتيب 🎬\n1. Login Customer ← 2. إنشاء مناسبة ← 3. Login Owner (OTP) ← 4. قبول الحجز ← 5. Login Vendors (OTP) ← 6. قبول الخدمات (photo للخدمة 1، dj للخدمة 3) ← 7. دفع الفاتورة ← 8. إغلاق المناسبة ← 9. التقييم ⭐\n\nكل التوكنات والـ ids بينحفظوا **تلقائياً** بمتغيرات الكولكشن بعد كل طلب — ما في نسخ يدوي! 🚀",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1️⃣ Auth — تسجيل الدخول",
+      "description": "ابدأ من هنا! كل طلب Login بيحفظ التوكن تلقائياً بمتغيرات الكولكشن فما في داعي تنسخ ولا توكن يدوياً.\n\n🔑 المورد وصاحب الصالة بيفوتوا بالـ OTP: نفّذ Send OTP ثم جيب الرمز من الداتابيز بهالأمر:\nphp artisan tinker --execute=\"echo \\App\\Models\\User::where('email','vendor.photo@eventak.com')->first()->otp_code;\"\nوحطه بطلب Verify OTP (الرمز صالح 5 دقائق).",
+      "item": [
+        {
+          "name": "Login — Customer (أحمد الزبون)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "زبون تجريبي جاهز من الـ Seeder. بيحفظ customer_token تلقائياً.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customer@eventak.com\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.token) {",
+                  "    pm.collectionVariables.set('customer_token', j.token);",
+                  "    console.log('✅ customer_token saved');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login — Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "حساب الأدمن من AdminSeeder (شغّل: php artisan db:seed --class=AdminSeeder). بيحفظ admin_token تلقائياً.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@eventak.com\",\n  \"password\": \"admin12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.token) {",
+                  "    pm.collectionVariables.set('admin_token', j.token);",
+                  "    console.log('✅ admin_token saved');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register — زبون جديد",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "تسجيل حساب زبون جديد. الإيميل والهاتف لازم يكونوا غير مستخدمين. بيحفظ customer_token تلقائياً.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"زبون جديد\",\n  \"email\": \"new.customer@test.com\",\n  \"phone\": \"0955555555\",\n  \"password\": \"secret123\",\n  \"password_confirmation\": \"secret123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.token) {",
+                  "    pm.collectionVariables.set('customer_token', j.token);",
+                  "    console.log('✅ customer_token saved');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send OTP — Vendor (استوديو اللحظة)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/send-otp",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "send-otp"
+              ]
+            },
+            "description": "بيولّد رمز OTP ويحاول إرساله بالإيميل. الإيميلات التجريبية وهمية، فجيب الرمز من الداتابيز:\nphp artisan tinker --execute=\"echo \\App\\Models\\User::where('email','vendor.photo@eventak.com')->first()->otp_code;\"\nملاحظة: حتى لو رجع الطلب 500 (فشل إرسال الإيميل) الرمز بيكون انحفظ بالداتابيز.\nباقي الموردين: vendor.dj / vendor.buffet / vendor.decor @eventak.com",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"vendor.photo@eventak.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify OTP — Vendor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/verify-otp",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "verify-otp"
+              ]
+            },
+            "description": "بدّل 123456 بالرمز الحقيقي من الداتابيز. بيحفظ vendor_token تلقائياً.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"vendor.photo@eventak.com\",\n  \"otp_code\": 123456\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.token) {",
+                  "    pm.collectionVariables.set('vendor_token', j.token);",
+                  "    console.log('✅ vendor_token saved');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send OTP — Venue Owner (مالك قاعة الماسة)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/send-otp",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "send-otp"
+              ]
+            },
+            "description": "نفس فكرة المورد. المالك التاني: owner.pearl@eventak.com (قاعة اللؤلؤة).\nجيب الرمز: php artisan tinker --execute=\"echo \\App\\Models\\User::where('email','owner.diamond@eventak.com')->first()->otp_code;\"",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"owner.diamond@eventak.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify OTP — Venue Owner",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/verify-otp",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "verify-otp"
+              ]
+            },
+            "description": "بدّل 123456 بالرمز الحقيقي. بيحفظ owner_token تلقائياً.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"owner.diamond@eventak.com\",\n  \"otp_code\": 123456\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.token) {",
+                  "    pm.collectionVariables.set('owner_token', j.token);",
+                  "    console.log('✅ owner_token saved');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/forgot-password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "forgot-password"
+              ]
+            },
+            "description": "بيبعت OTP استعادة كلمة مرور بالإيميل (صالح 10 دقائق).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customer@eventak.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/reset-password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "reset-password"
+              ]
+            },
+            "description": "بدّل الرمز بالحقيقي من الداتابيز (عمود otp_code بجدول users).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customer@eventak.com\",\n  \"otp_code\": \"123456\",\n  \"password\": \"newpassword123\",\n  \"password_confirmation\": \"newpassword123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "بيلغي التوكن الحالي (المستخدم بالـ Authorization header).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customer_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2️⃣ Public — تصفح بدون توكن",
+      "description": "كل هالراوتات متاحة للضيوف بدون تسجيل دخول.",
+      "item": [
+        {
+          "name": "كل الخدمات النشطة (مع فلاتر)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/services?category_id=1&search=تصوير&price_max=1000",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "services"
+              ],
+              "query": [
+                {
+                  "key": "category_id",
+                  "value": "1"
+                },
+                {
+                  "key": "search",
+                  "value": "تصوير"
+                },
+                {
+                  "key": "price_max",
+                  "value": "1000"
+                }
+              ]
+            },
+            "description": "الفلاتر اختيارية — عطّلها من تبويب Params إذا بدك كل الخدمات. النتائج مقسمة صفحات (10 لكل صفحة)."
+          },
+          "response": []
+        },
+        {
+          "name": "تصنيفات الخدمات",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/services/categories",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "services",
+                "categories"
+              ]
+            },
+            "description": "بيرجع التصنيفات مع عدد الخدمات النشطة بكل تصنيف."
+          },
+          "response": []
+        },
+        {
+          "name": "تفاصيل خدمة واحدة",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/services/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "services",
+                "1"
+              ]
+            },
+            "description": "الخدمات التجريبية: 1=باقة تصوير كاملة (500)، 2=تصوير صور (250)، 3=دي جي (300)، 4=بوفيه فاخر (1500)، 5=بوفيه اقتصادي (900)، 6=ديكور (400)."
+          },
+          "response": []
+        },
+        {
+          "name": "بحث الصالات",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/venues/search?search=الماسة&price_max=1500&capacity=100",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "venues",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "الماسة"
+                },
+                {
+                  "key": "price_max",
+                  "value": "1500"
+                },
+                {
+                  "key": "capacity",
+                  "value": "100"
+                }
+              ]
+            },
+            "description": "الصالات التجريبية: 1=قاعة الماسة (سعة 300، 1000)، 2=قاعة اللؤلؤة (سعة 150، 600). الفلاتر اختيارية."
+          },
+          "response": []
+        },
+        {
+          "name": "تقييمات صالة (مع المعدل)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/venues/1/ratings",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "venues",
+                "1",
+                "ratings"
+              ]
+            },
+            "description": "بيرجع average_rating و ratings_count وقائمة التقييمات — عام بدون توكن."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3️⃣ Customer — الحجز والدفع والتقييم",
+      "description": "سجّل دخول الزبون أولاً (مجلد 1). السيناريو الكامل بالترتيب:\nإنشاء مناسبة ← قبول صاحب الصالة (مجلد 4) ← قبول الموردين (مجلد 5) ← الدفع ← إغلاق المناسبة (مجلد 4) ← التقييم.\nevent_id و invoice_id بينحفظوا تلقائياً بعد إنشاء المناسبة.",
+      "item": [
+        {
+          "name": "إنشاء مناسبة (مع خدمات)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/customer/events",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "customer",
+                "events"
+              ]
+            },
+            "description": "المجموع المتوقع: 1000 (صالة) + 500 (تصوير) + 300 (دي جي) = 1800.\n⚠️ إذا رجع تعارض وقت (422) غيّر التاريخ — في ساعة تنظيف إلزامية بعد كل حجز.\nevent_id و invoice_id بينحفظوا تلقائياً.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customer_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_name\": \"حفل تخرج تجريبي\",\n  \"event_type\": \"تخرج\",\n  \"venue_id\": 1,\n  \"date\": \"2026-09-01\",\n  \"start_time\": \"18:00\",\n  \"end_time\": \"23:00\",\n  \"guests_count\": 200,\n  \"services\": [\n    {\n      \"service_id\": 1,\n      \"quantity\": 1\n    },\n    {\n      \"service_id\": 3,\n      \"quantity\": 1\n    }\n  ],\n  \"note\": \"طلب تجريبي من كولكشن بوست مان\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.data && j.data.event_id) {",
+                  "    pm.collectionVariables.set('event_id', j.data.event_id);",
+                  "    pm.collectionVariables.set('invoice_id', j.data.invoice_id);",
+                  "    console.log('✅ event_id=' + j.data.event_id + ', invoice_id=' + j.data.invoice_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "إنشاء مناسبة (بدون خدمات)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/customer/events",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "customer",
+                "events"
+              ]
+            },
+            "description": "حجز بدون خدمات: بعد قبول صاحب الصالة بيصير confirmed مباشرة (ما في موردين ينتظرهم).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customer_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_name\": \"اجتماع عائلي\",\n  \"event_type\": \"تجمع\",\n  \"venue_id\": 2,\n  \"date\": \"2026-09-05\",\n  \"start_time\": \"10:00\",\n  \"end_time\": \"14:00\",\n  \"guests_count\": 80\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.data && j.data.event_id) {",
+                  "    pm.collectionVariables.set('event_id', j.data.event_id);",
+                  "    pm.collectionVariables.set('invoice_id', j.data.invoice_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "مناسباتي",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/customer/events",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "customer",
+                "events"
+              ]
+            },
+            "description": "كل حجوزات الزبون الحالي من الأحدث للأقدم.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customer_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "تفاصيل مناسبة",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/customer/events/{{event_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "customer",
+                "events",
+                "{{event_id}}"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customer_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "💳 دفع الفاتورة — بطاقة",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/customer/payments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "customer",
+                "payments"
+              ]
+            },
+            "description": "⚠️ لازم تكون المناسبة confirmed (يعني صاحب الصالة والموردين قبلوا).\nالدفع سيميوليشن — أي بطاقة بصيغة صحيحة بتنجح. المبلغ بينقرأ من الفاتورة.\npayment_id بينحفظ تلقائياً.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customer_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoice_id\": \"{{invoice_id}}\",\n  \"payment_method\": \"credit_card\",\n  \"card_number\": \"4242424242424242\",\n  \"card_holder\": \"Ahmad Test\",\n  \"expiry_month\": 12,\n  \"expiry_year\": 2027,\n  \"cvv\": \"123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.data && j.data.payment_id) {",
+                  "    pm.collectionVariables.set('payment_id', j.data.payment_id);",
+                  "    console.log('✅ payment_id=' + j.data.payment_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "💳 دفع الفاتورة — كاش",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/customer/payments",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "customer",
+                "payments"
+              ]
+            },
+            "description": "الدفع كاش ما بيحتاج بيانات بطاقة. (جرب تدفع مرتين — التانية بترجع 422: مدفوعة مسبقاً)",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customer_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoice_id\": \"{{invoice_id}}\",\n  \"payment_method\": \"cash\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.data && j.data.payment_id) { pm.collectionVariables.set('payment_id', j.data.payment_id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "تفاصيل وصل دفع",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/customer/payments/{{payment_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "customer",
+                "payments",
+                "{{payment_id}}"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customer_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "الدفع المرتبط بفاتورة",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/customer/invoices/{{invoice_id}}/payment",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "customer",
+                "invoices",
+                "{{invoice_id}}",
+                "payment"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customer_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "❌ إلغاء الحجز (مع استرجاع متدرج)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/customer/events/{{event_id}}/cancel",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "customer",
+                "events",
+                "{{event_id}}",
+                "cancel"
+              ]
+            },
+            "description": "بيلغي أي حجز غير مكتمل. إذا كان مدفوعاً بيطبّق سياسة الاسترجاع:\n• أكتر من 7 أيام قبل المناسبة = استرجاع 100%\n• بين 48 ساعة و7 أيام = 50%\n• أقل من 48 ساعة = 0% (الإلغاء مسموح بدون استرجاع)\nالرد بيرجع refund_percent و refund_amount.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customer_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "⭐ تقييم المناسبة",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/customer/events/{{event_id}}/rating",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "customer",
+                "events",
+                "{{event_id}}",
+                "rating"
+              ]
+            },
+            "description": "⚠️ بس بعد ما تصير المناسبة completed (صاحب الصالة بيغلقها بعد الدفع). تقييم واحد لكل مناسبة، من 1 لـ 5.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customer_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"comment\": \"الصالة كانت رائعة والخدمات ممتازة!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "⭐ عرض تقييمي",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/customer/events/{{event_id}}/rating",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "customer",
+                "events",
+                "{{event_id}}",
+                "rating"
+              ]
+            },
+            "description": "بيرجع null إذا ما قيّمت بعد.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customer_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4️⃣ Venue Owner — صاحب الصالة",
+      "description": "سجّل دخول بالـ OTP أولاً (مجلد 1، حساب owner.diamond@eventak.com مالك قاعة الماسة).\nقرارات الحجز + طلبات إدارة الصالة (كلها بتروح للأدمن للموافقة).",
+      "item": [
+        {
+          "name": "حجوزات صالاتي",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/venue-owner/events",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "venue-owner",
+                "events"
+              ]
+            },
+            "description": "كل الحجوزات على كل صالات المالك الحالي مع بيانات الزبون.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "✅ قبول حجز",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/venue-owner/events/{{event_id}}/accept",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "venue-owner",
+                "events",
+                "{{event_id}}",
+                "accept"
+              ]
+            },
+            "description": "بيقبل حجز pending: مع خدمات ← vendor_pending، بدون خدمات ← confirmed مباشرة.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "❌ رفض حجز (سبب إلزامي)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/venue-owner/events/{{event_id}}/reject",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "venue-owner",
+                "events",
+                "{{event_id}}",
+                "reject"
+              ]
+            },
+            "description": "السبب إلزامي (5-1000 حرف). ما بينفع رفض حجز مدفوع أو مكتمل أو ملغى.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rejection_reason\": \"الصالة محجوزة لصيانة طارئة بهذا التاريخ، نعتذر منكم.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "🏁 إغلاق مناسبة (completed)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/venue-owner/events/{{event_id}}/complete",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "venue-owner",
+                "events",
+                "{{event_id}}",
+                "complete"
+              ]
+            },
+            "description": "⚠️ بس للحجوزات المدفوعة (paid). بعدها الزبون بيقدر يقيّم.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "طلب إضافة صالة جديدة",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/venue-owner/venue",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "venue-owner",
+                "venue"
+              ]
+            },
+            "description": "بيروح كطلب pending للأدمن (مجلد 6). الصور اختيارية — اختار ملفات من جهازك أو عطّل الحقول.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "قاعة الياسمين",
+                  "type": "text"
+                },
+                {
+                  "key": "capacity",
+                  "value": "250",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "850",
+                  "type": "text"
+                },
+                {
+                  "key": "address",
+                  "value": "دمشق - المالكي",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "قاعة أنيقة بإطلالة على الحديقة",
+                  "type": "text"
+                },
+                {
+                  "key": "cover_image",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "images[]",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.data && j.data.id) {",
+                  "    pm.collectionVariables.set('venue_request_id', j.data.id);",
+                  "    console.log('✅ venue_request_id=' + j.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "طلب تعديل صالة",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/venue-owner/venue/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "venue-owner",
+                "venue",
+                "1"
+              ]
+            },
+            "description": "⚠️ الرقم بالمسار = id الصالة الحية (قاعة الماسة=1 لمالك diamond). التعديل بيروح طلب للأدمن والصالة القديمة بتضل نشطة.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 1100,\n  \"description\": \"تم تجديد القاعة بالكامل\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.data && j.data.id) { pm.collectionVariables.set('venue_request_id', j.data.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "طلب حذف صالة",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/venue-owner/venue/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "venue-owner",
+                "venue",
+                "1"
+              ]
+            },
+            "description": "بيروح طلب حذف للأدمن، والصالة بتضل معروضة حتى يوافق.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.data && j.data.id) { pm.collectionVariables.set('venue_request_id', j.data.id); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5️⃣ Vendor — المورد",
+      "description": "سجّل دخول بالـ OTP أولاً (مجلد 1، حساب vendor.photo@eventak.com صاحب خدمتي التصوير 1 و2).\nالموردين التجريبيين: photo (خدمات 1،2) / dj (خدمة 3) / buffet (خدمات 4،5) / decor (خدمة 6).",
+      "item": [
+        {
+          "name": "طلبات الخدمات الواردة",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/vendor/orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "vendor",
+                "orders"
+              ]
+            },
+            "description": "المناسبات بحالة vendor_pending اللي فيها خدمات للمورد الحالي.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{vendor_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "✅ قبول خدمة بمناسبة",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/vendor/orders/{{event_id}}/services/1/accept",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "vendor",
+                "orders",
+                "{{event_id}}",
+                "services",
+                "1",
+                "accept"
+              ]
+            },
+            "description": "⚠️ 1 = رقم الخدمة — بدّلها حسب خدمات المورد. لما يقبل كل الموردين بتصير المناسبة confirmed تلقائياً.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{vendor_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "❌ رفض خدمة بمناسبة",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/vendor/orders/{{event_id}}/services/1/reject",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "vendor",
+                "orders",
+                "{{event_id}}",
+                "services",
+                "1",
+                "reject"
+              ]
+            },
+            "description": "رفض أي خدمة بيلغي المناسبة كاملة (الزبون بينشعر).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{vendor_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "خدماتي وباقاتي",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/vendor/services",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "vendor",
+                "services"
+              ]
+            },
+            "description": "كل خدمات المورد الحالي بكل الحالات (pending / active / ...).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{vendor_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "إضافة خدمة جديدة",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/vendor/services",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "vendor",
+                "services"
+              ]
+            },
+            "description": "بتنعمل بحالة pending وبتنتظر موافقة الأدمن (مجلد 6). الصور اختيارية.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{vendor_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "category_id",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "name",
+                  "value": "باقة تصوير درون جوية",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "تصوير جوي احترافي بطائرة درون 4K مع مونتاج كامل",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "650",
+                  "type": "text"
+                },
+                {
+                  "key": "images[]",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.data && j.data.id) {",
+                  "    pm.collectionVariables.set('my_service_id', j.data.id);",
+                  "    console.log('✅ my_service_id=' + j.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "تعديل خدمة (مع صور)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/vendor/services/{{my_service_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "vendor",
+                "services",
+                "{{my_service_id}}"
+              ]
+            },
+            "description": "POST مش PUT (لدعم رفع الصور). الخدمة بترجع pending لموافقة الأدمن. رفع صور جديدة بيستبدل القديمة.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{vendor_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "باقة تصوير درون جوية - محدثة",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "700",
+                  "type": "text"
+                },
+                {
+                  "key": "images[]",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "طلب حذف خدمة",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/vendor/services/{{my_service_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "vendor",
+                "services",
+                "{{my_service_id}}"
+              ]
+            },
+            "description": "بتتحول لـ pending_delete وبتنحذف نهائياً بس لما يوافق الأدمن.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{vendor_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6️⃣ Admin — الإدارة",
+      "description": "سجّل دخول الأدمن أولاً (مجلد 1). موافقات الخدمات والصالات + المراقبة.",
+      "item": [
+        {
+          "name": "إضافة مورد / صاحب صالة",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/add-user",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "add-user"
+              ]
+            },
+            "description": "role: vendor أو venue_owner. الحساب بدون كلمة مرور — بيفوت بالـ OTP. الإيميل والهاتف لازم يكونوا جدد.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"مورد ورود جديد\",\n  \"email\": \"vendor.flowers@eventak.com\",\n  \"phone\": \"0911111119\",\n  \"role\": \"vendor\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "طلبات الخدمات المعلقة",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/services/requests",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "services",
+                "requests"
+              ]
+            },
+            "description": "الخدمات بحالة pending (إضافة/تعديل) أو pending_delete (حذف).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "✅ موافقة على خدمة",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/services/{{my_service_id}}/approve",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "services",
+                "{{my_service_id}}",
+                "approve"
+              ]
+            },
+            "description": "pending ← بتصير active ومعروضة للزبائن. pending_delete ← بتنحذف نهائياً.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "❌ رفض خدمة",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/services/{{my_service_id}}/reject",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "services",
+                "{{my_service_id}}",
+                "reject"
+              ]
+            },
+            "description": "pending ← بتصير inactive. pending_delete ← بترجع active (رفض الحذف).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "طلبات الصالات المعلقة",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/venue-requests",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "venue-requests"
+              ]
+            },
+            "description": "طلبات إنشاء/تعديل/حذف الصالات مع بيانات المالك.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "✅ موافقة على طلب صالة",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/venue-requests/{{venue_request_id}}/approve",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "venue-requests",
+                "{{venue_request_id}}",
+                "approve"
+              ]
+            },
+            "description": "بيطبّق الطلب حسب نوعه: create بينشئ صالة نشطة، update بيعدّل الحية، delete بيحذفها.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "❌ رفض طلب صالة",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/venue-requests/{{venue_request_id}}/reject",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "venue-requests",
+                "{{venue_request_id}}",
+                "reject"
+              ]
+            },
+            "description": "الكتالوج الحي ما بينمس أبداً عند الرفض.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "كل المستخدمين",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "الصالات النشطة",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/venues/active",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "venues",
+                "active"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "كل المناسبات (مراقبة)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/events/all",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "events",
+                "all"
+              ]
+            },
+            "description": "كل الحجوزات مع الزبون والصالة والخدمات والفاتورة.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "7️⃣ Profile & Notifications — لأي دور",
+      "description": "شغالة مع أي توكن — مبدئياً معيّنة على توكن الزبون، بدّل الـ Authorization إذا بدك دور تاني.",
+      "item": [
+        {
+          "name": "بروفايلي",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/user/profile",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "user",
+                "profile"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customer_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "تعديل البروفايل",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/user/profile",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "user",
+                "profile"
+              ]
+            },
+            "description": "الإيميل والهاتف لازم يضلوا unique (باستثناء سجل المستخدم نفسه).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customer_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"أحمد الزبون المحدث\",\n  \"email\": \"customer@eventak.com\",\n  \"phone\": \"0933333333\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "رفع صورة شخصية",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/user/avatar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "user",
+                "avatar"
+              ]
+            },
+            "description": "JPEG/PNG/WebP بحد أقصى 2MB. الصورة القديمة بتنحذف تلقائياً.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customer_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "avatar",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "حذف الصورة الشخصية",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/user/avatar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "user",
+                "avatar"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customer_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "🔔 كل إشعاراتي",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/notifications",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "notifications"
+              ]
+            },
+            "description": "كل إشعارات المستخدم الحالي (جرب توكنات مختلفة لتشوف إشعارات كل دور).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customer_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "🔔 غير المقروءة فقط",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/notifications/unread",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "notifications",
+                "unread"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customer_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "🔔 تعليم إشعار كمقروء",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/notifications/NOTIFICATION_ID/read",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "notifications",
+                "NOTIFICATION_ID",
+                "read"
+              ]
+            },
+            "description": "بدّل NOTIFICATION_ID بالـ id (UUID) من رد كل إشعاراتي.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customer_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000/api"
+    },
+    {
+      "key": "customer_token",
+      "value": ""
+    },
+    {
+      "key": "admin_token",
+      "value": ""
+    },
+    {
+      "key": "vendor_token",
+      "value": ""
+    },
+    {
+      "key": "owner_token",
+      "value": ""
+    },
+    {
+      "key": "event_id",
+      "value": "1"
+    },
+    {
+      "key": "invoice_id",
+      "value": "1"
+    },
+    {
+      "key": "payment_id",
+      "value": "1"
+    },
+    {
+      "key": "my_service_id",
+      "value": "1"
+    },
+    {
+      "key": "venue_request_id",
+      "value": "1"
+    }
+  ]
+}

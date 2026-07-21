@@ -10,6 +10,7 @@ use App\Notifications\NewServiceRequestNotification;
 use App\Notifications\VendorApprovedServiceNotification; // 👈 استدعاء إشعار القبول
 use App\Notifications\VendorRejectedServiceNotification; // 👈 استدعاء إشعار الرفض
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class VendorOrderController extends Controller
 {
@@ -84,7 +85,22 @@ class VendorOrderController extends Controller
             'name' => 'sometimes|string|max:255',
             'description' => 'sometimes|string',
             'price' => 'sometimes|numeric|min:0',
+            'images' => 'nullable|array',
+            'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
+
+        // في حال رفع صور جديدة: نحذف الصور القديمة من التخزين ونستبدلها بالجديدة
+        if ($request->hasFile('images')) {
+            foreach ($service->images ?? [] as $oldImage) {
+                Storage::disk('public')->delete($oldImage);
+            }
+
+            $images = [];
+            foreach ($request->file('images') as $image) {
+                $images[] = $image->store('services', 'public');
+            }
+            $validated['images'] = $images;
+        }
 
         // 🔥 التعديل: نحدث البيانات ونعيد حالة الخدمة إلى pending لتختفي لحين المراجعة
         $validated['status'] = 'pending';
@@ -177,7 +193,7 @@ class VendorOrderController extends Controller
         }
 
         // تحديث السجل في الجدول الوسيط
-        $event->services()->updateExistingPivot($serviceId, ['status' => 'confirmed']);
+        $event->services()->updateExistingPivot($serviceId, ['status' => 'accepted']);
 
         // 🔔 إرسال إشعار للزبون: وافق المورد على هذه الخدمة المحددة
         if ($event->customer) {
@@ -226,12 +242,31 @@ class VendorOrderController extends Controller
     }
 
     /**
+     * جلب واستعراض كافة الخدمات والباقات الخاصة بالمورد الحالي
+     */
+    public function myServices(Request $request)
+    {
+        $user = $request->user();
+
+        $services = Service::where('vendor_id', $user->id)
+            ->with('category:id,name')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'count' => $services->count(),
+            'data' => $services
+        ], 200);
+    }
+
+    /**
      * دالة مساعدة ذكية تفحص إذا وافق جميع الموردين في المناسبة لتحويل حالتها لـ confirmed جاهزة للدفع
      */
     private function checkAndUpgradeEventStatus($event)
     {
         // جلب حالات جميع الخدمات المرتبطة بهذه المناسبة في الجدول الوسيط
-        $allServicesStatus = DB::table('event_service') // استبدله باسم جدولك الوسيط الحقيقي للخدمات والمناسبات
+        $allServicesStatus = DB::table('event_services')
             ->where('event_id', $event->id)
             ->pluck('status')
             ->toArray();
@@ -243,7 +278,7 @@ class VendorOrderController extends Controller
 
             // إشعار الزبون فوراً عبر نظام الإشعارات بأن حجزه جاهز بالكامل للدفع والاعتماد!
             if ($event->customer) {
-                $event->customer->notify(new \App\Notifications\EventApprovedNotification($event));
+                $event->customer->notify(new \App\Notifications\EventConfirmedNotification($event));
             }
         }
     }

@@ -13,6 +13,7 @@ class VenueRequest extends Model
     protected $fillable = [
         'owner_id',
         'venue_id',
+        'type',
         'name',
         'address',
         'capacity',
