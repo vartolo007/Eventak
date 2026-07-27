@@ -9,6 +9,7 @@ use App\Models\Venue;
 use App\Notifications\EventApprovedNotification;
 use App\Notifications\EventConfirmedNotification;
 use App\Notifications\EventRejectedNotification;
+use Carbon\Carbon;
 
 class VenueOrderController extends Controller
 {
@@ -47,9 +48,7 @@ class VenueOrderController extends Controller
     public function accept($id, Request $request)
     {
         $user = $request->user();
-
-        // الإصلاح الثاني: تحميل علاقة الـ venue مع المناسبة لضمان قراءة المالك بأمان
-        $event = Event::with('venue')->findOrFail($id);
+        $event = Event::with('venue', 'customer')->findOrFail($id); // Eager load customer for notification
 
         // التأكد أن المستخدم الحالي هو فعلاً صاحب الصالة المحجوزة
         if (!$event->venue || $event->venue->owner_id !== $user->id) {
@@ -73,13 +72,51 @@ class VenueOrderController extends Controller
         $event->status = $hasServices ? 'vendor_pending' : 'confirmed';
         $event->save();
 
-        $customer = $event->customer; // تأكد أن علاقة customer معرفة في موديل Event
-        if ($customer) {
+        if ($event->customer) {
             // إشعار القبول عند انتظار الموردين، أو إشعار التأكيد الجاهز للدفع إن لم توجد خدمات
-            $customer->notify($hasServices
+            $event->customer->notify($hasServices
                 ? new EventApprovedNotification($event)
                 : new EventConfirmedNotification($event));
         }
+
+        // --- Start: Logic to handle conflicting events ---
+        $acceptedEventStart = Carbon::parse($event->date . ' ' . $event->start_time);
+        $acceptedEventEnd = Carbon::parse($event->date . ' ' . $event->end_time);
+        // إضافة ساعة التنظيف الإلزامية للحجز المقبول
+        $acceptedEventEndWithCleaning = (clone $acceptedEventEnd)->addHour();
+
+        // البحث عن الحجوزات المتضاربة لنفس الصالة ونفس التاريخ
+        $conflictingEvents = Event::where('venue_id', $event->venue_id)
+            ->where('date', $event->date)
+            ->where('id', '!=', $event->id) // استبعاد الحجز الذي تم قبوله للتو
+            ->whereIn('status', ['pending', 'venue_pending']) // فقط الحجوزات التي تنتظر موافقة صاحب الصالة أو في حالة pending الأولية
+            ->with('customer') // تحميل بيانات الزبون لإرسال الإشعار
+            ->get();
+
+        foreach ($conflictingEvents as $conflictingEvent) {
+            $conflictingEventStart = Carbon::parse($conflictingEvent->date . ' ' . $conflictingEvent->start_time);
+            $conflictingEventEnd = Carbon::parse($conflictingEvent->date . ' ' . $conflictingEvent->end_time);
+
+            // التحقق من التداخل الزمني مع الحجز المقبول (بما في ذلك ساعة التنظيف)
+            if ($conflictingEventStart->lt($acceptedEventEndWithCleaning) && $conflictingEventEnd->gt($acceptedEventStart)) {
+                // تم العثور على تضارب!
+                // تحديث حالة الحجز المتضارب إلى ملغى وتحديد سبب الإلغاء
+                $conflictingEvent->update([
+                    'status' => 'cancelled',
+                    'rejection_reason' => 'تم إلغاء طلب حجز الصالة بسبب قبول طلب حجز آخر (ID: ' . $event->id . ') لنفس الصالة والوقت. يرجى اختيار صالة أو وقت آخر.'
+                ]);
+
+                // إشعار الزبون صاحب الحجز الملغى
+                if ($conflictingEvent->customer) {
+                    $conflictingEvent->customer->notify(new EventRejectedNotification(
+                        $conflictingEvent,
+                        'rejected',
+                        'تم إلغاء طلب حجز الصالة بسبب قبول طلب حجز آخر (ID: ' . $event->id . ') لنفس الصالة والوقت. يرجى اختيار صالة أو وقت آخر.'
+                    ));
+                }
+            }
+        }
+        // --- End: Logic to handle conflicting events ---
 
         return response()->json([
             'status' => 'success',
@@ -129,7 +166,11 @@ class VenueOrderController extends Controller
 
         $customer = $event->customer;
         if ($customer) {
-            $customer->notify(new EventRejectedNotification($event));
+            $customer->notify(new EventRejectedNotification(
+                $event,
+                'rejected',
+                $request->rejection_reason // استخدام سبب الرفض الذي أدخله صاحب الصالة
+            ));
         }
 
         return response()->json([

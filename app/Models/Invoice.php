@@ -28,4 +28,6 @@ class Invoice extends Model
     {
         return $this->hasOne(Payment::class, 'invoice_id');
     }
+
+
 }

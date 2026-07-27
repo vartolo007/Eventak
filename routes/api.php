@@ -54,10 +54,16 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::get('/admin/venues/active', [AdminController::class, 'getActiveVenues']); // عرض كل الصالات الفعالة
     Route::get('/admin/events/all', [AdminController::class, 'getAllEvents']);   // تصفح ومراقبة كل الحفلات وفواتيرها
 
+    // مسارات إدارة تصنيفات الخدمات بواسطة الأدمن
+    Route::get('/admin/service-categories', [AdminController::class, 'indexServiceCategories']);
+    Route::post('/admin/service-categories', [AdminController::class, 'storeServiceCategory']);
+    Route::put('/admin/service-categories/{id}', [AdminController::class, 'updateServiceCategory']);
+    Route::delete('/admin/service-categories/{id}', [AdminController::class, 'destroyServiceCategory']);
     // أي مسارات إضافية للآدمن مستقبلاً توضع هنا...
 });
 
 // 1️⃣ مسارات عامة (متاحة للجميع: ضيوف، زبائن، موردين)
+Route::get('/customer/venues', [CustomerEventController::class, 'listVenues']); // عرض الصالات
 Route::get('/services', [ServiceController::class, 'index']);             // عرض كافة الخدمات مع الفلترة
 Route::get('/services/categories', [ServiceController::class, 'categories']); // عرض تصنيفات الخدمات
 Route::get('/services/{id}', [ServiceController::class, 'show']);         // عرض تفاصيل خدمة واحدة
@@ -69,9 +75,11 @@ Route::get('/venues/{venueId}/ratings', [RatingController::class, 'venueRatings'
 Route::middleware(['auth:sanctum', 'isVenueOwner'])->group(function () {
 
     // مسار تحديث بيانات الصالة
+    Route::get('/venue-owner/venues', [VenueController::class, 'myVenues']);     //عرض صالاتي
     Route::post('/venue-owner/venue', [VenueController::class, 'store']);         // إضافة صالة جديدة
     Route::put('/venue-owner/venue/{id}', [VenueController::class, 'update']);     // تعديل صالة معينة
     Route::delete('/venue-owner/venue/{id}', [VenueController::class, 'destroy']); // طلب حذف صالة
+    Route::get('/venue-owner/requests', [VenueController::class, 'myRequests']);    //عرض طلباتي
 
     // مسارات قرارات الحجز الجديدة لصاحب الصالة
     Route::get('/venue-owner/events', [VenueOrderController::class, 'ownerIndex']);
@@ -94,6 +102,7 @@ Route::middleware(['auth:sanctum', 'isCustomer'])->group(function () {
     Route::put('/customer/events/{id}/cancel', [CustomerEventController::class, 'cancel']);
 
     // 💳 مسارات الدفع والوصولات المالية للزبون:
+    Route::get('/customer/invoices/{invoiceId}/pending', [PaymentController::class, 'showPendingInvoiceDetails']); // لعرض تفاصيل فاتورة بانتظار الدفع
     Route::post('/customer/payments', [PaymentController::class, 'store']);                    // إجراء عملية دفع جديدة
     Route::get('/customer/payments/{id}', [PaymentController::class, 'show']);                 // عرض تفاصيل وصل دفع معين
     Route::get('/customer/invoices/{invoiceId}/payment', [PaymentController::class, 'byInvoice']); // عرض دفع متعلق بفاتورة معينة

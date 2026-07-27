@@ -23,6 +23,39 @@ class Service extends Model
         'images' => 'array',
     ];
 
+     /**
+     * Accessor لتعديل روابط الصور لتظهر كاملة
+     *
+     * @param  string|null  $value
+     * @return array
+     */
+    public function getImagesAttribute($value)
+    {
+        // إذا لم تكن هناك صور، أرجع مصفوفة فارغة
+        if (empty($value)) {
+            return [];
+        }
+
+        // فك ترميز JSON إذا كانت الصور مخزنة كـ JSON string
+        $imagesArray = is_string($value) ? json_decode($value, true) : $value;
+
+        // تأكد أنها مصفوفة
+        if (!is_array($imagesArray)) {
+            return [];
+        }
+
+        // معالجة كل مسار صورة
+        return array_map(function ($path) {
+            // إذا كان المسار يبدأ بـ 'http' (رابط خارجي)، اتركه كما هو
+            if (filter_var($path, FILTER_VALIDATE_URL)) {
+                return $path;
+            }
+            // وإلا، قم بإنشاء الرابط الكامل باستخدام asset()
+            // asset() ستستخدم APP_URL من ملف .env
+            return asset('storage/' . $path);
+        }, $imagesArray);
+    }
+
     // علاقة الخدمة بالمورد
     public function vendor()
     {

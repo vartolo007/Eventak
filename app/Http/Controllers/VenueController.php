@@ -1,16 +1,34 @@
 <?php
-
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use App\Models\User;
 use App\Models\Venue;
 use App\Models\VenueRequest;
-use App\Models\User;
 use App\Notifications\NewVenueRequestNotification;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class VenueController extends Controller
 {
+
+    /**
+     * عرض جميع الصالات الخاصة بالمستخدم الحالي
+     */
+    public function myVenues(Request $request)
+    {
+        $user = $request->user();
+
+        $venues = Venue::where('owner_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'count'  => $venues->count(),
+            'data'   => $venues,
+        ], 200);
+    }
+
     /**
      * 1. دالة إضافة صالة جديدة (تخزن الحقول الصريحة في جدول الـ requests)
      */
@@ -19,14 +37,14 @@ class VenueController extends Controller
         $user = $request->user();
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'capacity' => 'required|integer|min:1',
-            'price' => 'required|numeric|min:0',
-            'address' => 'required|string',
+            'name'        => 'required|string|max:255',
+            'capacity'    => 'required|integer|min:1',
+            'price'       => 'required|numeric|min:0',
+            'address'     => 'required|string',
             'description' => 'nullable|string',
             'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-            'images' => 'nullable|array',
-            'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:2048',
+            'images'      => 'nullable|array',
+            'images.*'    => 'image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
         $coverImagePath = null;
@@ -42,17 +60,17 @@ class VenueController extends Controller
         }
 
         $venueRequest = VenueRequest::create([
-            'owner_id' => $user->id,
-            'venue_id' => null,
-            'type' => 'create',
-            'name' => $validated['name'],
-            'capacity' => $validated['capacity'],
-            'price' => $validated['price'],
-            'address' => $validated['address'],
+            'owner_id'    => $user->id,
+            'venue_id'    => null,
+            'type'        => 'create',
+            'name'        => $validated['name'],
+            'capacity'    => $validated['capacity'],
+            'price'       => $validated['price'],
+            'address'     => $validated['address'],
             'description' => $validated['description'] ?? null,
             'cover_image' => $coverImagePath,
-            'images' => !empty($imagesPath) ? $imagesPath : null,
-            'status' => 'pending',
+            'images'      => ! empty($imagesPath) ? $imagesPath : null,
+            'status'      => 'pending',
         ]);
 
         // 🔔 إشعار الأدمن في الداتابيز
@@ -62,9 +80,9 @@ class VenueController extends Controller
         }
 
         return response()->json([
-            'status' => 'success',
+            'status'  => 'success',
             'message' => 'تم إرسال طلب إضافة الصالة للأدمن بنجاح وهو قيد المراجعة حالياً.',
-            'data' => $venueRequest
+            'data'    => $venueRequest,
         ], 201);
     }
 
@@ -73,25 +91,25 @@ class VenueController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $user = $request->user();
+        $user  = $request->user();
         $venue = Venue::findOrFail($id); // الصالة الأصلية الحية
 
         if ($venue->owner_id !== $user->id) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'ليس لديك صلاحية تعديل بيانات هذه الصالة'
+                'status'  => 'error',
+                'message' => 'ليس لديك صلاحية تعديل بيانات هذه الصالة',
             ], 403);
         }
 
         $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'capacity' => 'sometimes|integer|min:1',
-            'price' => 'sometimes|numeric|min:0',
-            'address' => 'sometimes|string',
+            'name'        => 'sometimes|string|max:255',
+            'capacity'    => 'sometimes|integer|min:1',
+            'price'       => 'sometimes|numeric|min:0',
+            'address'     => 'sometimes|string',
             'description' => 'nullable|string',
             'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-            'images' => 'nullable|array',
-            'images.*' => 'image|mimes:jpeg,png,jpg,webp|max:2048',
+            'images'      => 'nullable|array',
+            'images.*'    => 'image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
         $coverImagePath = $venue->cover_image;
@@ -111,17 +129,17 @@ class VenueController extends Controller
         }
 
         $venueRequest = VenueRequest::create([
-            'owner_id' => $user->id,
-            'venue_id' => $venue->id,
-            'type' => 'update',
-            'name' => $validated['name'] ?? $venue->name,
-            'capacity' => $validated['capacity'] ?? $venue->capacity,
-            'price' => $validated['price'] ?? $venue->price,
-            'address' => $validated['address'] ?? $venue->address,
+            'owner_id'    => $user->id,
+            'venue_id'    => $venue->id,
+            'type'        => 'update',
+            'name'        => $validated['name'] ?? $venue->name,
+            'capacity'    => $validated['capacity'] ?? $venue->capacity,
+            'price'       => $validated['price'] ?? $venue->price,
+            'address'     => $validated['address'] ?? $venue->address,
             'description' => $validated['description'] ?? $venue->description,
             'cover_image' => $coverImagePath,
-            'images' => !empty($imagesPath) ? $imagesPath : null,
-            'status' => 'pending',
+            'images'      => ! empty($imagesPath) ? $imagesPath : null,
+            'status'      => 'pending',
         ]);
 
         // 🔔 إشعار الأدمن
@@ -131,9 +149,9 @@ class VenueController extends Controller
         }
 
         return response()->json([
-            'status' => 'success',
+            'status'  => 'success',
             'message' => 'تم إرسال طلب التعديل للأدمن بنجاح وبقيت الصالة القديمة نشطة حتى يوافق.',
-            'data' => $venueRequest
+            'data'    => $venueRequest,
         ], 200);
     }
 
@@ -142,13 +160,13 @@ class VenueController extends Controller
      */
     public function destroy(Request $request, $id)
     {
-        $user = $request->user();
+        $user  = $request->user();
         $venue = Venue::findOrFail($id);
 
         if ($venue->owner_id !== $user->id) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'ليس لديك صلاحية حذف هذه الصالة'
+                'status'  => 'error',
+                'message' => 'ليس لديك صلاحية حذف هذه الصالة',
             ], 403);
         }
 
@@ -156,12 +174,12 @@ class VenueController extends Controller
         $venueRequest = VenueRequest::create([
             'owner_id' => $user->id,
             'venue_id' => $venue->id,
-            'type' => 'delete',
-            'name' => $venue->name,
+            'type'     => 'delete',
+            'name'     => $venue->name,
             'capacity' => $venue->capacity,
-            'price' => $venue->price,
-            'address' => $venue->address,
-            'status' => 'pending'
+            'price'    => $venue->price,
+            'address'  => $venue->address,
+            'status'   => 'pending',
         ]);
 
         // 🔔 إشعار الأدمن
@@ -171,10 +189,30 @@ class VenueController extends Controller
         }
 
         return response()->json([
-            'status' => 'success',
-            'message' => 'تم تقديم طلب حذف الصالة للأدمن، وستبقى معروضة حتى يوافق على مسحها.'
+            'status'  => 'success',
+            'message' => 'تم تقديم طلب حذف الصالة للأدمن، وستبقى معروضة حتى يوافق على مسحها.',
         ], 200);
     }
+
+    /**
+     * عرض الطلبات المعلقة لصاحب الصالة (إضافة / تعديل / حذف)
+     */
+    public function myRequests(Request $request)
+    {
+        $user = $request->user();
+
+        $pendingRequests = VenueRequest::where('owner_id', $user->id)
+            ->where('status', 'pending')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'count'  => $pendingRequests->count(),
+            'data'   => $pendingRequests,
+        ], 200);
+    }
+
     /**
      * محرك البحث والفلترة للصالات بناءً على السعر، القدرة الاستيعابية، والموقع
      */
@@ -206,8 +244,8 @@ class VenueController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'count' => $venues->count(),
-            'data' => $venues
+            'count'  => $venues->count(),
+            'data'   => $venues,
         ], 200);
     }
 }

@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Event;
+use App\Models\EventService;
 use App\Models\Service;
 use App\Models\User;
 use App\Notifications\NewServiceRequestNotification;
 use App\Notifications\VendorApprovedServiceNotification; // 👈 استدعاء إشعار القبول
 use App\Notifications\VendorRejectedServiceNotification; // 👈 استدعاء إشعار الرفض
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -151,26 +152,56 @@ class VendorOrderController extends Controller
     /**
      * 1. جلب كافة المناسبات التي تطلب خدمات تابعة للمورد الحالي
      */
-    public function index(Request $request)
+   public function index(Request $request)
     {
         $user = $request->user(); // المورد الحالي
 
-        // جلب المناسبات التي تحتوي على خدمات تابعة لهذا المورد وحالتها العامة بانتظار الموردين
-        // مع جلب تفاصيل الخدمات المطلوبة منه فقط في تلك المناسبة
-        $events = Event::where('status', 'vendor_pending')
-            ->whereHas('services', function ($query) use ($user) {
-                $query->where('vendor_id', $user->id); // الفلترة بـ id المورد داخل جدول الخدمات
-            })
-            ->with(['services' => function ($query) use ($user) {
-                $query->where('vendor_id', $user->id); // جلب خدماته هو فقط في الـ Response
-            }, 'venue', 'customer:id,name,phone'])
-            ->orderBy('date', 'asc')
+        // 1. نحصل على IDs الخدمات التي يملكها هذا المورد
+        $userOwnedServiceIds = Service::where('vendor_id', $user->id)
+            ->where('status', 'active') // اختياري: قد ترغب بجلب الخدمات النشطة فقط
+            ->pluck('id')->toArray();
+
+        // إذا لم يكن لدى المورد أي خدمات نشطة، فلا يوجد شيء لعرضه
+        if (empty($userOwnedServiceIds)) {
+            return response()->json([
+                'status' => 'success',
+                'count' => 0,
+                'data' => []
+            ], 200);
+        }
+
+        // 2. نبحث في الجدول الوسيط (event_services) عن الخدمات المطلوبة من المورد
+        //    - نتحقق أن حالة الخدمة في المناسبة هي 'pending' (بانتظار قرار المورد)
+        //    - نتحقق أن 'service_id' موجود ضمن قائمة الخدمات التي يملكها المورد
+        //    - نحمل تفاصيل المناسبة والعميل والصالة والخدمة نفسها
+        $eventServices = EventService::where('status', 'pending')
+            ->whereIn('service_id', $userOwnedServiceIds)
+            ->with([
+                'event' => function ($query) { // تحميل بيانات المناسبة
+                    // جلب الحقول الضرورية للمورد لمعرفة تفاصيل المناسبة
+                    $query->select('id', 'customer_id', 'venue_id', 'date', 'start_time', 'end_time', 'event_type');
+                },
+                'event.customer' => function ($query) { // تحميل بيانات العميل (فقط الحقول الأساسية)
+                    $query->select('id', 'name', 'phone');
+                },
+                'event.venue' => function ($query) { // تحميل بيانات الصالة (فقط الحقول الأساسية)
+                    $query->select('id', 'name', 'address'); // يمكن إضافة السعر إذا كان مهماً للمورد
+                },
+                'service' => function ($query) { // تحميل بيانات الخدمة المطلوبة (التي تخص المورد)
+                    // اختيار الحقول الأساسية للخدمة
+                    $query->select('id', 'name', 'price', 'description');
+                }
+            ])
+            ->orderBy('created_at', 'desc')
             ->get();
+
+        // يمكنك الآن معالجة الـ $eventServices لعرضها بالشكل الذي تريده
+        // مثلاً، قد ترغب بتجميعها حسب المناسبة أو جعلها قائمة مسطحة
 
         return response()->json([
             'status' => 'success',
-            'count' => $events->count(),
-            'data' => $events
+            'count' => $eventServices->count(),
+            'data' => $eventServices // هذه ستكون قائمة بسجلات event_services مع بياناتها المربوطة
         ], 200);
     }
 

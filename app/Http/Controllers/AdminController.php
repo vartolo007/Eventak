@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Event;
 use App\Models\Service;
 use App\Models\User;
+use App\Models\ServiceCategory; // 👈 أضف هذا الاستيراد
 use App\Models\Venue;
-use App\Models\Event;
 use App\Models\VenueRequest;
+use App\Notifications\ServiceRequestResultNotification;
+use App\Notifications\VenueRequestResultNotification;
 use Illuminate\Http\Request;
 
 class AdminController extends Controller
@@ -14,28 +17,25 @@ class AdminController extends Controller
     public function addUser(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name'  => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'phone' => 'required|string|unique:users,phone',
-            'role' => 'required|in:vendor,venue_owner' // تحديد نوع الحساب
+            'role'  => 'required|in:vendor,venue_owner', // تحديد نوع الحساب
         ]);
 
         $user = User::create([
-            'name' => $request->name,
+            'name'  => $request->name,
             'email' => $request->email,
             'phone' => $request->phone,
-            'role' => $request->role,
+            'role'  => $request->role,
             // لا يوجد حقل كلمة مرور هنا، لأن المورد سيدخل عبر الـ OTP حصراً!
         ]);
 
         return response()->json([
             'message' => 'تم إضافة المورد بنجاح، يمكنه الآن الدخول عبر الـ OTP',
-            'user' => $user
+            'user'    => $user,
         ]);
     }
-
-
-
 
     // 1. عرض كافة طلبات الخدمات المعلقة (إضافة أو تعديل أو حذف)
     public function serviceRequests()
@@ -43,7 +43,6 @@ class AdminController extends Controller
         $requests = Service::whereIn('status', ['pending', 'pending_delete'])->with('vendor')->get();
         return response()->json(['status' => 'success', 'data' => $requests]);
     }
-
 
     /**
      * 1. دالة الموافقة على طلبات الخدمات (تفعيل الإضافة/التعديل أو تأكيد الحذف)
@@ -54,14 +53,16 @@ class AdminController extends Controller
 
         // إذا كان المورد يطلب حذف الخدمة، ووافق الأدمن، نقوم بحذفها نهائياً
         if ($service->status === 'pending_delete') {
+            // 🔔 إشعار المورد قبل الحذف لضمان توفر بياناته
+            if ($service->vendor) {
+                $service->vendor->notify(new ServiceRequestResultNotification($service, 'delete_approved'));
+            }
+
             $service->delete();
 
-            // هنا يمكنك إرسال إشعار للمورد بأنه تم قبول طلب الحذف
-            // $service->vendor->notify(new ServiceActionNotification($service, 'deleted'));
-
             return response()->json([
-                'status' => 'success',
-                'message' => 'تمت الموافقة على طلب الحذف، وتمت إزالة الخدمة نهائياً من النظام.'
+                'status'  => 'success',
+                'message' => 'تمت الموافقة على طلب الحذف، وتمت إزالة الخدمة نهائياً من النظام.',
             ], 200);
         }
 
@@ -69,19 +70,21 @@ class AdminController extends Controller
         if ($service->status === 'pending') {
             $service->update(['status' => 'active']);
 
-            // هنا يمكنك إرسال إشعار للمورد بأن خدمته أصبحت حية ونشطة
-            // $service->vendor->notify(new ServiceActionNotification($service, 'approved'));
+            // 🔔 إشعار المورد بأن خدمته أصبحت حية ونشطة
+            if ($service->vendor) {
+                $service->vendor->notify(new ServiceRequestResultNotification($service, 'approved'));
+            }
 
             return response()->json([
-                'status' => 'success',
+                'status'  => 'success',
                 'message' => 'تمت الموافقة على الخدمة وتفعيلها بنجاح، وهي الآن معروضة في التطبيق.',
-                'data' => $service
+                'data'    => $service,
             ], 200);
         }
 
         return response()->json([
-            'status' => 'error',
-            'message' => 'هذه الخدمة ليست بحاجة إلى موافقة حالياً.'
+            'status'  => 'error',
+            'message' => 'هذه الخدمة ليست بحاجة إلى موافقة حالياً.',
         ], 400);
     }
 
@@ -96,13 +99,15 @@ class AdminController extends Controller
         if ($service->status === 'pending_delete') {
             $service->update(['status' => 'active']);
 
-            // إشعار المورد برفض طلب الحذف
-            // $service->vendor->notify(new ServiceActionNotification($service, 'delete_rejected'));
+            // 🔔 إشعار المورد برفض طلب الحذف
+            if ($service->vendor) {
+                $service->vendor->notify(new ServiceRequestResultNotification($service, 'delete_rejected'));
+            }
 
             return response()->json([
-                'status' => 'success',
+                'status'  => 'success',
                 'message' => 'تم رفض طلب الحذف، وأعيدت الخدمة نشطة ومتوفرة في التطبيق.',
-                'data' => $service
+                'data'    => $service,
             ], 200);
         }
 
@@ -110,19 +115,21 @@ class AdminController extends Controller
         if ($service->status === 'pending') {
             $service->update(['status' => 'inactive']);
 
-            // إشعار المورد برفض إضافة الخدمة ليتأكد من بياناتها
-            // $service->vendor->notify(new ServiceActionNotification($service, 'rejected'));
+            // 🔔 إشعار المورد برفض إضافة الخدمة ليتأكد من بياناتها
+            if ($service->vendor) {
+                $service->vendor->notify(new ServiceRequestResultNotification($service, 'rejected'));
+            }
 
             return response()->json([
-                'status' => 'success',
+                'status'  => 'success',
                 'message' => 'تم رفض طلب الخدمة، وتم تحويل حالتها إلى غير نشطة (inactive).',
-                'data' => $service
+                'data'    => $service,
             ], 200);
         }
 
         return response()->json([
-            'status' => 'error',
-            'message' => 'هذه الخدمة ليست في حالة مراجعة لطلب الرفض.'
+            'status'  => 'error',
+            'message' => 'هذه الخدمة ليست في حالة مراجعة لطلب الرفض.',
         ], 400);
     }
 
@@ -133,14 +140,14 @@ class AdminController extends Controller
     {
         // جلب كافة السجلات التي حالتها pending (معلقة) مع بيانات صاحب الصالة (User)
         $requests = VenueRequest::where('status', 'pending')
-            ->with('owner') // افترضنا أن هناك علاقة اسمها owner في موديل VenueRequest تربطه بالمستخدم
+            ->with('owner')
             ->orderBy('created_at', 'desc')
             ->get();
 
         return response()->json([
             'status' => 'success',
-            'count' => $requests->count(),
-            'data' => $requests
+            'count'  => $requests->count(),
+            'data'   => $requests,
         ], 200);
     }
 
@@ -155,15 +162,15 @@ class AdminController extends Controller
         // 1. موافقة على إضافة صالة جديدة كلياً
         if ($venueRequest->type === 'create') {
             Venue::create([
-                'owner_id' => $venueRequest->owner_id,
-                'name' => $venueRequest->name,
-                'capacity' => $venueRequest->capacity,
-                'price' => $venueRequest->price,
-                'address' => $venueRequest->address,
+                'owner_id'    => $venueRequest->owner_id,
+                'name'        => $venueRequest->name,
+                'capacity'    => $venueRequest->capacity,
+                'price'       => $venueRequest->price,
+                'address'     => $venueRequest->address,
                 'description' => $venueRequest->description,
-                 'cover_image' => $venueRequest->cover_image,
-                'images' => $venueRequest->images,
-                'status' => 'active'
+                'cover_image' => $venueRequest->cover_image,
+                'images'      => $venueRequest->images,
+                'status'      => 'active',
             ]);
         }
 
@@ -177,7 +184,7 @@ class AdminController extends Controller
                 'address'     => $venueRequest->address,
                 'description' => $venueRequest->description,
                 'cover_image' => $venueRequest->cover_image,
-                'images' => $venueRequest->images,
+                'images'      => $venueRequest->images,
             ]);
         }
 
@@ -190,12 +197,17 @@ class AdminController extends Controller
         // تحديث حالة الطلب نفسه في جدول الطلبات (حيث يوجد حقل status كـ enum فعلياً)
         $venueRequest->update(['status' => 'approved']);
 
+        // 🔔 إشعار صاحب الصالة بالموافقة على طلبه
+        $owner = $venueRequest->owner;
+        if ($owner) {
+            $owner->notify(new VenueRequestResultNotification($venueRequest, 'approved'));
+        }
+
         return response()->json([
-            'status' => 'success',
-            'message' => 'تمت معالجة طلب الصالة والموافقة عليه بنجاح وتحديث البيانات الحية.'
+            'status'  => 'success',
+            'message' => 'تمت معالجة طلب الصالة والموافقة عليه بنجاح وتحديث البيانات الحية.',
         ], 200);
     }
-
 
     /**
      * دالة رفض طلبات الصالات (سواء رفض إضافة، رفض تعديل، أو رفض حذف)
@@ -208,20 +220,20 @@ class AdminController extends Controller
         // 2. التأكد من أن الطلب ما زال معلقاً ولم يتم البت فيه سابقاً
         if ($venueRequest->status !== 'pending') {
             return response()->json([
-                'status' => 'error',
-                'message' => 'هذا الطلب تم اتخاذ إجراء سابق عليه بالفعل.'
+                'status'  => 'error',
+                'message' => 'هذا الطلب تم اتخاذ إجراء سابق عليه بالفعل.',
             ], 400);
         }
 
         // 3. التحقق من استقبال سبب الرفض إجبارياً بحسب الـ UI Flow
         $validated = $request->validate([
-            'admin_notes' => 'required|string|max:1000'
+            'admin_notes' => 'required|string|max:1000',
         ]);
 
         // 4. تحديث حالة الطلب وحفظ سبب الرفض في جدول الـ requests
         $venueRequest->update([
-            'status' => 'rejected',
-            'admin_notes' => $validated['admin_notes'] // 👈 حفظ السبب ليراه صاحب الصالة ببروفايله
+            'status'      => 'rejected',
+            'admin_notes' => $validated['admin_notes'],
         ]);
 
         // 💡 المنطق البرمجي للرفض بحسب نوع الطلب:
@@ -242,13 +254,16 @@ class AdminController extends Controller
                 $message = 'تم رفض الطلب بنجاح.';
         }
 
-        // 🔔 هنا نرسل إشعاراً لصاحب الصالة يخبره برفض طلبه لتعديل بياناته أو مراجعة الإدارة
-        // $venueRequest->owner->notify(new VenueRequestRejectedNotification($venueRequest));
+        // 🔔 إشعار صاحب الصالة برفض طلبه مع السبب
+        $owner = $venueRequest->owner;
+        if ($owner) {
+            $owner->notify(new VenueRequestResultNotification($venueRequest, 'rejected'));
+        }
 
         return response()->json([
-            'status' => 'success',
+            'status'  => 'success',
             'message' => $message,
-            'data' => $venueRequest
+            'data'    => $venueRequest,
         ], 200);
     }
 
@@ -262,8 +277,8 @@ class AdminController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'count' => $users->count(),
-            'data' => $users
+            'count'  => $users->count(),
+            'data'   => $users,
         ], 200);
     }
 
@@ -273,15 +288,14 @@ class AdminController extends Controller
      */
     public function getActiveVenues()
     {
-        // 💡 تم حذف ->where('status', 'active') لأن وجود السجل بجدول venues يعني أنه فعال تلقائياً
-        $venues = Venue::with('owner:id,name,email,phone') // 👈 تأكد من وجود علاقة owner داخل موديل Venue
+        $venues = Venue::with('owner:id,name,email,phone')
             ->orderBy('created_at', 'desc')
             ->get();
 
         return response()->json([
             'status' => 'success',
-            'count' => $venues->count(),
-            'data' => $venues
+            'count'  => $venues->count(),
+            'data'   => $venues,
         ], 200);
     }
 
@@ -291,18 +305,109 @@ class AdminController extends Controller
      */
     public function getAllEvents()
     {
-        // جلب كافة المناسبات مع تفاصيل الزبون، الصالة، الخدمات، والفاتورة المرتبطة بها
+        // جلب كافة المناسبات مع تفاصيل الزبون، الصالة، الخدمات (بأسعارها وكمياتها وقت الحجز)، والفاتورة
         $events = Event::with([
             'customer:id,name,phone',
             'venue:id,name,price',
-            'services:id,name,price',
-            'invoice'
+            'services' => function ($query) {
+                // نجلب أعمدة جدول services الأساسية + بيانات الجدول الوسيط (السعر والكمية والحالة وقت الحجز)
+                $query->select('services.id', 'services.name')
+                    ->withPivot('quantity', 'price', 'status', 'rejection_reason');
+            },
+            'invoice',
         ])->orderBy('created_at', 'desc')->get();
 
         return response()->json([
             'status' => 'success',
-            'count' => $events->count(),
-            'data' => $events
+            'count'  => $events->count(),
+            'data'   => $events,
         ], 200);
+    }
+
+    /**
+     * عرض جميع تصنيفات الخدمات.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function indexServiceCategories()
+    {
+        $categories = ServiceCategory::all();
+        return response()->json([
+            'status' => 'success',
+            'categories' => $categories
+        ]);
+    }
+
+    /**
+     * إضافة تصنيف خدمة جديد.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function storeServiceCategory(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255|unique:service_categories,name',
+            'description' => 'nullable|string',
+        ]);
+
+        $category = ServiceCategory::create($request->all());
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'تم إنشاء تصنيف الخدمة بنجاح.',
+            'category' => $category
+        ], 201);
+    }
+
+    /**
+     * تحديث تصنيف خدمة موجود.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateServiceCategory(Request $request, $id)
+    {
+        $category = ServiceCategory::findOrFail($id);
+
+        $request->validate([
+            'name' => 'required|string|max:255|unique:service_categories,name,' . $id,
+            'description' => 'nullable|string',
+        ]);
+
+        $category->update($request->all());
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'تم تحديث تصنيف الخدمة بنجاح.',
+            'category' => $category
+        ]);
+    }
+
+    /**
+     * حذف تصنيف خدمة.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function destroyServiceCategory($id)
+    {
+        $category = ServiceCategory::findOrFail($id);
+
+        // تحقق اختياري: إذا كانت هناك خدمات مرتبطة بهذا التصنيف، امنع الحذف
+        if ($category->services()->count() > 0) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'لا يمكن حذف التصنيف لوجود خدمات مرتبطة به. يرجى إعادة تعيين الخدمات أو حذفها أولاً.'
+            ], 409); // Conflict
+        }
+
+        $category->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'تم حذف تصنيف الخدمة بنجاح.'
+        ]);
     }
 }

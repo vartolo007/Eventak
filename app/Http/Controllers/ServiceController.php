@@ -38,13 +38,11 @@ class ServiceController extends Controller
         ]);
     }
 
-    // عرض تصنيفات الخدمات
+    // عرض كافة تصنيفات الخدمات (ليتم استخدامها في القوائم المنسدلة من قبل الموردين أو للفلترة)
     public function categories()
     {
-        // جلب التصنيفات مع عد الخدمات النشطة فقط
-        $categories = ServiceCategory::withCount(['services' => function ($query) {
-            $query->where('status', 'active');
-        }])->get();
+        // جلب كافة التصنيفات (الاسم والـ ID) ليتمكن المورد من الاختيار بينها
+        $categories = ServiceCategory::select('id', 'name', 'description')->get();
 
         return response()->json([
             'status' => 'success',

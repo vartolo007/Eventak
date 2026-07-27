@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             VendorSeeder::class,
             VenueOwnerSeeder::class,
             EventSeeder::class,
+            AdminSeeder::class, 
         ]);
     }
 }

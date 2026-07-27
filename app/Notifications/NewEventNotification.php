@@ -21,10 +21,10 @@ class NewEventNotification extends Notification
 
     public function toArray($notifiable): array {
         return [
-            'event_id' => $this->event->id,
-            'title' => 'طلب حجز جديد قيد الانتظار',
-            'message' => "تم تقديم طلب حجز جديد لصالتك بتاريخ " . $this->event->date,
-            'type' => 'new_booking'
+            'event_id' => $this->event->id, // معرف المناسبة
+            'title' => 'طلب مناسبة جديد', // عنوان الإشعار
+            'message' => "لديك طلب مناسبة جديد ({$this->event->event_name}) من الزبون {$this->event->customer->name} بانتظار مراجعتك.", // رسالة الإشعار
+            'type' => 'new_event_request' // نوع الإشعار لتسهيل التعامل معه في الواجهة الأمامية
         ];
     }
 }

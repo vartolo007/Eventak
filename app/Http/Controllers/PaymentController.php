@@ -15,6 +15,7 @@ class PaymentController extends Controller
         $user = $request->user();
 
         $validated = $request->validate([
+            'amount' => 'required|numeric|min:0', // إضافة حقل المبلغ للتحقق
             'invoice_id' => 'required|exists:invoices,id',
             'payment_method' => 'required|in:credit_card,debit_card,paypal,cash',
 
@@ -55,6 +56,14 @@ class PaymentController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'لا يمكنك دفع قيمة الفاتورة حالياً، الحجز لم يتم تأكيده بعد من الإدارة أو الموردين.'
+            ], 422);
+        }
+
+        // التحقق من أن المبلغ المدفوع يطابق إجمالي الفاتورة
+        if ($validated['amount'] != $invoice->total_amount) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'المبلغ المدفوع لا يطابق إجمالي الفاتورة. المبلغ المطلوب هو ' . $invoice->total_amount . '.'
             ], 422);
         }
 
@@ -164,6 +173,54 @@ class PaymentController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => $payment
+        ]);
+    }
+
+    /**
+     * لعرض تفاصيل فاتورة بانتظار الدفع للزبون الحالي.
+     * تضمن أن الفاتورة لم يتم دفعها بعد.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $invoiceId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function showPendingInvoiceDetails(Request $request, $invoiceId)
+    {
+        $user = $request->user();
+
+        // جلب الفاتورة مع علاقاتها الضرورية والتأكد من حالتها 'pending'
+        $invoice = Invoice::with([
+            'event' => function ($query) {
+                // جلب الحقول الأساسية للمناسبة
+                $query->select('id', 'customer_id', 'venue_id', 'event_name', 'date', 'start_time', 'end_time', 'guests_count');
+            },
+            'event.customer' => function ($query) {
+                // جلب الحقول الأساسية للزبون
+                $query->select('id', 'name');
+            },
+            'event.venue' => function ($query) {
+                // جلب الحقول الأساسية للصالة
+                $query->select('id', 'name', 'address');
+            },
+            'event.services' => function ($query) { // جلب الخدمات المرتبطة بالمناسبة
+                $query->select('services.id', 'services.name')->withPivot('quantity', 'price');
+            }
+        ])
+                          ->where('id', $invoiceId)
+                          ->where('status', 'pending') // الشرط الأساسي: الفاتورة بانتظار الدفع
+                          ->first();
+
+        if (!$invoice || $invoice->event->customer_id !== $user->id) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'عذراً، الفاتورة غير موجودة، أو تم دفعها بالفعل، أو لا تملك صلاحية الوصول إليها.'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'تم جلب تفاصيل الفاتورة بانتظار الدفع بنجاح.',
+            'data' => $invoice
         ]);
     }
 }
