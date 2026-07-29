@@ -143,4 +143,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index']);       //عرض كافة الإشعارات (المقروءة وغير المقروءة)
     Route::get('/notifications/unread', [NotificationController::class, 'unread']); //عرض الإشعارات غير المقروءة فقط
     Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);  //تحويل إشعار معين إلى مقروء
+    Route::post('/notifications/fcm-token', [NotificationController::class, 'updateFcmToken']); // إضافة هذا المسار
+    Route::post('/notifications/send-fcm', [NotificationController::class, 'sendFcmNotification']); // إضافة هذا المسار لإرسال إشعار فوري
 });

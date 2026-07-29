@@ -34,6 +34,8 @@ return new class extends Migration
             // ربط المورد بتصنيف الخدمات
             $table->unsignedBigInteger('vendor_category_id')->nullable();
 
+            $table->text('fcm_token')->nullable();
+
             $table->rememberToken();
             $table->timestamps();
         });

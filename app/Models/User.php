@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -12,8 +11,6 @@ class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
-
-
 
     /**
      * The attributes that are mass assignable.
@@ -30,6 +27,7 @@ class User extends Authenticatable
         'otp_code',
         'otp_expires_at',
         'vendor_category_id',
+        'fcm_token',
     ];
 
     /**
@@ -51,7 +49,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'password'          => 'hashed',
         ];
     }
 
