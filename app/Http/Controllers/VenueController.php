@@ -114,9 +114,6 @@ class VenueController extends Controller
 
         $coverImagePath = $venue->cover_image;
         if ($request->hasFile('cover_image')) {
-            if ($venue->cover_image) {
-                Storage::disk('public')->delete($venue->cover_image);
-            }
             $coverImagePath = $request->file('cover_image')->store('venues', 'public');
         }
 

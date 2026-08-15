@@ -25,9 +25,11 @@ class VenueOrderController extends Controller
 
         if ($venueIds->isEmpty()) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'لم يتم العثور على صالة مسجلة باسمك بعد.'
-            ], 404);
+                'status' => 'success',
+                'count'  => 0,
+                'data'   => [],
+                'message' => 'لا توجد صالات مسجلة باسمك بعد.'
+            ], 200);
         }
 
         // جلب جميع المناسبات المرتبطة بكل صالاته مع بيانات الزبون الذي حجزها

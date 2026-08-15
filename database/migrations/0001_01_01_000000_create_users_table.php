@@ -20,7 +20,7 @@ return new class extends Migration
             // فريد لأن دخول الـ OTP عبر الواتساب يعتمد على الرقم للعثور على المستخدم
             $table->string('phone')->nullable()->unique();
             $table->timestamp('email_verified_at')->nullable();
-
+            $table->timestamp('phone_verified_at')->nullable();
             // كلمة المرور تقبل الفراغ لأن الموردين وأصحاب الصالات يدخلون عبر الـ OTP
             $table->string('password')->nullable();
 

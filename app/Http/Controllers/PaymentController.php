@@ -32,6 +32,13 @@ class PaymentController extends Controller
 
         // التحقق من أن الفاتورة تابعة للزبون
         $invoice = Invoice::findOrFail($validated['invoice_id']);
+        if (! $invoice->event) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'هذه الفاتورة غير مرتبطة بمناسبة صالحة.',
+            ], 404);
+        }
+
         if ($invoice->event->customer_id !== $user->id) {
             return response()->json([
                 'status' => 'error',
@@ -140,6 +147,13 @@ class PaymentController extends Controller
         $user = $request->user();
         $payment = Payment::with('invoice.event')->findOrFail($id);
 
+        if (! $payment->invoice || ! $payment->invoice->event) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'بيانات الدفع غير مكتملة أو الفاتورة غير مرتبطة بمناسبة.',
+            ], 404);
+        }
+
         // التحقق من الملكية
         if ($payment->invoice->event->customer_id !== $user->id) {
             return response()->json([
@@ -159,6 +173,13 @@ class PaymentController extends Controller
     {
         $user = $request->user();
         $invoice = Invoice::findOrFail($invoiceId);
+
+        if (! $invoice->event) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'هذه الفاتورة غير مرتبطة بمناسبة صالحة.',
+            ], 404);
+        }
 
         // التحقق من الملكية
         if ($invoice->event->customer_id !== $user->id) {
@@ -210,7 +231,7 @@ class PaymentController extends Controller
                           ->where('status', 'pending') // الشرط الأساسي: الفاتورة بانتظار الدفع
                           ->first();
 
-        if (!$invoice || $invoice->event->customer_id !== $user->id) {
+        if (!$invoice || ! $invoice->event || $invoice->event->customer_id !== $user->id) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'عذراً، الفاتورة غير موجودة، أو تم دفعها بالفعل، أو لا تملك صلاحية الوصول إليها.'

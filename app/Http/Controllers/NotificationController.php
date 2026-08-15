@@ -37,6 +37,7 @@ class NotificationController extends Controller
         return response()->json([
             'status'  => 'success',
             'message' => 'تم تحديث رمز FCM بنجاح.',
+            'data'    => null,
         ]);
     }
 
@@ -77,6 +78,7 @@ class NotificationController extends Controller
             return response()->json([
                 'status'  => 'success',
                 'message' => 'تم إرسال الإشعار بنجاح!',
+                'data'    => null,
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -117,10 +119,15 @@ class NotificationController extends Controller
             $notification->markAsRead();
             return response()->json([
                 'status'  => 'success',
-                'message' => 'تم تعيين الإشعار كمقروء.'
+                'message' => 'تم تعيين الإشعار كمقروء.',
+                'data'    => $notification,
             ]);
         }
 
-        return response()->json(['message' => 'الإشعار غير موجود.'], 404);
+        return response()->json([
+            'status'  => 'error',
+            'message' => 'الإشعار غير موجود.',
+            'data'    => null,
+        ], 404);
     }
 }

@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
+use App\Models\Invoice;
+use App\Models\Payment;
+use App\Models\Rating;
 use App\Models\Service;
 use App\Models\User;
 use App\Models\ServiceCategory; // 👈 أضف هذا الاستيراد
@@ -11,6 +14,7 @@ use App\Models\VenueRequest;
 use App\Notifications\ServiceRequestResultNotification;
 use App\Notifications\VenueRequestResultNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class AdminController extends Controller
 {
@@ -177,6 +181,9 @@ class AdminController extends Controller
         // 2. موافقة على تعديل صالة قائمة
         if ($venueRequest->type === 'update') {
             $venue = Venue::findOrFail($venueRequest->venue_id);
+            $oldCoverImage = $venue->cover_image;
+            $oldImages = $venue->images ?? [];
+
             $venue->update([
                 'name'        => $venueRequest->name,
                 'capacity'    => $venueRequest->capacity,
@@ -186,6 +193,17 @@ class AdminController extends Controller
                 'cover_image' => $venueRequest->cover_image,
                 'images'      => $venueRequest->images,
             ]);
+
+            if ($oldCoverImage && $oldCoverImage !== $venueRequest->cover_image) {
+                Storage::disk('public')->delete($oldCoverImage);
+            }
+
+            $newImages = $venueRequest->images ?? [];
+            foreach ($oldImages as $oldImage) {
+                if (! in_array($oldImage, $newImages, true)) {
+                    Storage::disk('public')->delete($oldImage);
+                }
+            }
         }
 
         // 3. موافقة على حذف صالة
@@ -239,10 +257,12 @@ class AdminController extends Controller
         // 💡 المنطق البرمجي للرفض بحسب نوع الطلب:
         switch ($venueRequest->type) {
             case 'create':
+                $this->deleteVenueRequestFiles($venueRequest);
                 $message = 'تم رفض طلب إنشاء الصالة بنجاح، ولن تظهر في النظام.';
                 break;
 
             case 'update':
+                $this->deleteVenueRequestFiles($venueRequest);
                 $message = 'تم رفض طلب التعديل، وبقيت بيانات الصالة الأصلية الحية دون أي تغيير.';
                 break;
 
@@ -267,6 +287,17 @@ class AdminController extends Controller
         ], 200);
     }
 
+    private function deleteVenueRequestFiles(VenueRequest $venueRequest): void
+    {
+        if ($venueRequest->cover_image) {
+            Storage::disk('public')->delete($venueRequest->cover_image);
+        }
+
+        foreach ($venueRequest->images ?? [] as $image) {
+            Storage::disk('public')->delete($image);
+        }
+    }
+
     /**
      * 1. جلب وعرض قائمة كافة المستخدمين والملاك والموردين بالنظام
      * (Users Management)
@@ -288,7 +319,8 @@ class AdminController extends Controller
      */
     public function getActiveVenues()
     {
-        $venues = Venue::with('owner:id,name,email,phone')
+        $venues = Venue::where('status', 'active')
+            ->with('owner:id,name,email,phone')
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -325,6 +357,56 @@ class AdminController extends Controller
     }
 
     /**
+     * 4. عرض جميع التقييمات في التطبيق (تقييمات المناسبات/الصالات)
+     */
+    public function getAllRatings()
+    {
+        $ratings = Rating::with([
+            'customer:id,name,phone,email',
+            'event:id,venue_id,event_name,event_type,date,status',
+            'event.venue:id,name,address',
+        ])->orderBy('created_at', 'desc')->get();
+
+        return response()->json([
+            'status' => 'success',
+            'count'  => $ratings->count(),
+            'data'   => $ratings,
+        ], 200);
+    }
+
+    /**
+     * 5. عرض جميع المدفوعات والملخص المالي الكامل للإدارة
+     */
+    public function getAllPaymentsAndFinance()
+    {
+        $payments = Payment::with([
+            'invoice:id,event_id,total_amount,status,venue_price,services_total',
+            'invoice.event:id,customer_id,venue_id,event_name,date,status',
+            'invoice.event.customer:id,name,phone,email',
+            'invoice.event.venue:id,name,address',
+        ])->orderBy('created_at', 'desc')->get();
+
+        $financeSummary = [
+            'payments_count' => $payments->count(),
+            'successful_payments_count' => Payment::where('status', 'success')->count(),
+            'failed_payments_count' => Payment::where('status', 'failed')->count(),
+            'refunded_payments_count' => Payment::where('status', 'refunded')->count(),
+            'total_collected_amount' => (float) Payment::where('status', 'success')->sum('amount'),
+            'total_refunded_amount' => (float) Payment::sum('refund_amount'),
+            'paid_invoices_count' => Invoice::where('status', 'paid')->count(),
+            'pending_invoices_count' => Invoice::where('status', 'pending')->count(),
+            'total_invoices_amount' => (float) Invoice::sum('total_amount'),
+        ];
+
+        return response()->json([
+            'status' => 'success',
+            'summary' => $financeSummary,
+            'count' => $payments->count(),
+            'data' => $payments,
+        ], 200);
+    }
+
+    /**
      * عرض جميع تصنيفات الخدمات.
      *
      * @return \Illuminate\Http\JsonResponse
@@ -334,7 +416,7 @@ class AdminController extends Controller
         $categories = ServiceCategory::all();
         return response()->json([
             'status' => 'success',
-            'categories' => $categories
+            'data' => $categories
         ]);
     }
 

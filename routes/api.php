@@ -53,6 +53,8 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
     Route::get('/admin/users', [AdminController::class, 'getAllUsers']);         // عرض إدارة المستخدمين والموردين
     Route::get('/admin/venues/active', [AdminController::class, 'getActiveVenues']); // عرض كل الصالات الفعالة
     Route::get('/admin/events/all', [AdminController::class, 'getAllEvents']);   // تصفح ومراقبة كل الحفلات وفواتيرها
+    Route::get('/admin/ratings/all', [AdminController::class, 'getAllRatings']); // عرض كل التقييمات في التطبيق
+    Route::get('/admin/payments/finance', [AdminController::class, 'getAllPaymentsAndFinance']); // عرض كل المدفوعات والملخص المالي
 
     // مسارات إدارة تصنيفات الخدمات بواسطة الأدمن
     Route::get('/admin/service-categories', [AdminController::class, 'indexServiceCategories']);
@@ -144,5 +146,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications/unread', [NotificationController::class, 'unread']); //عرض الإشعارات غير المقروءة فقط
     Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);  //تحويل إشعار معين إلى مقروء
     Route::post('/notifications/fcm-token', [NotificationController::class, 'updateFcmToken']); // إضافة هذا المسار
-    Route::post('/notifications/send-fcm', [NotificationController::class, 'sendFcmNotification']); // إضافة هذا المسار لإرسال إشعار فوري
+    Route::post('/notifications/send-fcm', [NotificationController::class, 'sendFcmNotification'])->middleware('isAdmin'); // إرسال إشعار فوري للأدمن فقط
 });

@@ -29,7 +29,12 @@ class AuthController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
+            'status' => 'success',
             'message' => 'تم إنشاء الحساب بنجاح',
+            'data' => [
+                'user' => $user,
+                'token' => $token,
+            ],
             'user' => $user,
             'token' => $token
         ], 201);
@@ -56,7 +61,12 @@ class AuthController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
+            'status' => 'success',
             'message' => 'تم تسجيل الدخول بنجاح',
+            'data' => [
+                'user' => $user,
+                'token' => $token,
+            ],
             'user' => $user,
             'token' => $token
         ]);
@@ -65,9 +75,14 @@ class AuthController extends Controller
     // 3. تسجيل الخروج
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $token = $request->user()->currentAccessToken();
+
+        if ($token) {
+            $token->delete();
+        }
 
         return response()->json([
+            'status' => 'success',
             'message' => 'تم تسجيل الخروج بنجاح'
         ]);
     }

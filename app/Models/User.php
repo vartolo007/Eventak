@@ -26,6 +26,8 @@ class User extends Authenticatable
         'role',
         'otp_code',
         'otp_expires_at',
+        'email_verified_at',
+        'phone_verified_at',
         'vendor_category_id',
         'fcm_token',
     ];
@@ -49,6 +51,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'phone_verified_at' => 'datetime',
             'password'          => 'hashed',
         ];
     }

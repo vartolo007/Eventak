@@ -12,6 +12,7 @@ use App\Notifications\NewEventNotification;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class CustomerEventController extends Controller
 {
@@ -33,24 +34,9 @@ class CustomerEventController extends Controller
             ->orderBy('created_at', 'desc') // ترتيب حسب الأحدث
             ->get();
 
-        // معالجة إضافية لروابط الصور لجعلها كاملة
-        $venues->each(function ($venue) {
-            // معالجة صورة الغلاف
-            if ($venue->cover_image && ! filter_var($venue->cover_image, FILTER_VALIDATE_URL)) {
-                $venue->cover_image = asset('storage/' . $venue->cover_image);
-            }
-            // معالجة باقي الصور
-            if ($venue->images && is_array($venue->images)) {
-                $venue->images = array_map(function ($path) {
-                    if (filter_var($path, FILTER_VALIDATE_URL)) {
-                        return $path;
-                    }
-                    return asset('storage/' . $path);
-                }, $venue->images);
-            }
-        });
 
-        return response()->json([
+            
+            return response()->json([
             'status' => 'success',
             'count'  => $venues->count(),
             'data'   => $venues,
@@ -71,7 +57,10 @@ class CustomerEventController extends Controller
             'event_type'            => 'required|string|max:255',
 
             // Step 2: المكان والتاريخ
-            'venue_id'              => 'required|exists:venues,id',
+            'venue_id'              => [
+                'required',
+                Rule::exists('venues', 'id')->where('status', 'active'),
+            ],
             'date'                  => 'required|date|after_or_equal:today',
             'start_time'            => 'required|date_format:H:i',
             'end_time'              => 'required|date_format:H:i|after:start_time',
@@ -79,14 +68,17 @@ class CustomerEventController extends Controller
 
             // Step 3: الخدمات المختارة
             'services'              => 'nullable|array',
-            'services.*.service_id' => 'required_with:services|exists:services,id',
+            'services.*.service_id' => [
+                'required_with:services',
+                Rule::exists('services', 'id')->where('status', 'active'),
+            ],
             'services.*.quantity'   => 'required_with:services|integer|min:1',
 
             'note'                  => 'nullable|string',
         ]);
 
         $user  = $request->user();
-        $venue = Venue::findOrFail($request->venue_id);
+        $venue = Venue::where('status', 'active')->findOrFail($request->venue_id);
 
         // التحقق من القدرة الاستيعابية
         if ($request->guests_count > $venue->capacity) {
@@ -113,15 +105,18 @@ class CustomerEventController extends Controller
 
         foreach ($existingEvents as $existingEvent) {
             // استخدام Carbon::parse لمنع خطأ Trailing data (500 Error) الناتج عن اختلاف صيغة الثواني في MySQL
-            $existingStart = Carbon::parse($existingEvent->start_time);
-            $existingEnd   = Carbon::parse($existingEvent->end_time);
-
-            // إضافة "ساعة التنظيف الإلزامية" بعد وقت انتهاء الحجز القديم المخزن فقط لحمايته
+            $existingStart           = Carbon::parse($existingEvent->start_time);
+            $existingEnd             = Carbon::parse($existingEvent->end_time);
             $existingEndWithCleaning = (clone $existingEnd)->addHour();
 
+            $requestedEndWithCleaning = (clone $requestedEnd)->addHour();
+
+            // إضافة "ساعة التنظيف الإلزامية" بعد وقت انتهاء الحجز القديم المخزن فقط لحمايته
+
+
             // 💡 فحص التداخل الرياضي والمنطقي بين الفترتين الزمنيتين بشكل صحيح:
-            // يتداخل الحجزان إذا بدأ الحجز الجديد قبل نهاية القديم (المضاف لها ساعة التنظيف) وَ انتهى الحجز الجديد بعد بداية الحجز القديم
-            if ($requestedStart->lt($existingEndWithCleaning) && $requestedEnd->gt($existingStart)) {
+            // يتداخل الحجزان إذا بدأ أي منهما قبل نهاية الآخر بعد احتساب ساعة التنظيف لكليهما
+            if ($requestedStart->lt($existingEndWithCleaning) && $requestedEndWithCleaning->gt($existingStart)) {
                 return response()->json([
                     'status'         => 'error',
                     'message'        => 'عذراً، هذا الوقت غير متاح للحجز. الصالة مشغولة بحجز آخر أو تقع ضمن ساعة التنظيف الإلزامية للمناسبة السابقة.',
@@ -144,7 +139,7 @@ class CustomerEventController extends Controller
         // معالجة الخدمات المختارة
         if (! empty($request->services)) {
             foreach ($request->services as $serviceItem) {
-                $service       = Service::findOrFail($serviceItem['service_id']);
+                $service       = Service::where('status', 'active')->findOrFail($serviceItem['service_id']);
                 $servicePrice  = $service->price * $serviceItem['quantity'];
                 $totalPrice   += $servicePrice;
 
@@ -378,7 +373,7 @@ class CustomerEventController extends Controller
         $previouslyConflictingEvents = Event::where('venue_id', $event->venue_id)
             ->where('date', $event->date)
             ->where('id', '!=', $event->id) // استبعاد الحجز الحالي الذي يتم إلغاؤه
-            ->where('status', 'cancelled') // التأكد من أنها لا تزال في حالة ملغاة
+            ->where('status', 'cancelled')  // التأكد من أنها لا تزال في حالة ملغاة
             ->where('rejection_reason', 'like', $rejectionPattern)
             ->with('customer', 'venue') // تحميل بيانات الزبون والصالة للإشعار
             ->get();

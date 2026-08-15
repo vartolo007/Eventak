@@ -54,7 +54,15 @@ class VenueRequest extends Model
      */
     public function getCoverImageUrlAttribute()
     {
-        return $this->cover_image ? Storage::url($this->cover_image) : null;
+        if (empty($this->cover_image)) {
+            return null;
+        }
+
+        if (filter_var($this->cover_image, FILTER_VALIDATE_URL)) {
+            return $this->cover_image;
+        }
+
+        return asset('storage/' . $this->cover_image);
     }
 
     /**
@@ -65,7 +73,16 @@ class VenueRequest extends Model
     public function getImagesUrlsAttribute()
     {
         if (empty($this->images)) return [];
-        return collect($this->images)->map(fn ($imagePath) => Storage::url($imagePath))->toArray();
+
+        return collect($this->images)
+            ->map(function ($imagePath) {
+                if (filter_var($imagePath, FILTER_VALIDATE_URL)) {
+                    return $imagePath;
+                }
+
+                return asset('storage/' . $imagePath);
+            })
+            ->toArray();
     }
 
     /**

@@ -12,6 +12,28 @@ use Carbon\Carbon;
 
 class OtpAuthController extends Controller
 {
+    private function resolveOtpUser(Request $request): ?User
+    {
+        $email = $request->input('email');
+        $phone = $request->input('phone');
+
+        if ($email && $phone) {
+            $userByEmail = User::where('email', $email)->first();
+            $userByPhone = User::where('phone', $phone)->first();
+
+            if (! $userByEmail || ! $userByPhone || $userByEmail->id !== $userByPhone->id) {
+                return null;
+            }
+
+            return $userByEmail;
+        }
+
+        return User::query()
+            ->when($email, fn($query) => $query->where('email', $email))
+            ->when($phone, fn($query) => $query->where('phone', $phone))
+            ->first();
+    }
+
     /**
      * الخطوة الأولى: طلب الرمز وإرساله (إما عبر الإيميل أو الواتساب)
      */
@@ -24,10 +46,14 @@ class OtpAuthController extends Controller
         ]);
 
         // 2. البحث عن المستخدم (سواء بالإيميل أو رقم الهاتف)
-        $user = User::query()
-            ->when($request->email, fn($query) => $query->where('email', $request->email))
-            ->when($request->phone, fn($query) => $query->where('phone', $request->phone))
-            ->first();
+        $user = $this->resolveOtpUser($request);
+
+        if (! $user) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'الإيميل ورقم الهاتف لا يخصّان نفس المستخدم، يرجى إرسال أحدهما فقط أو التأكد من التطابق.',
+            ], 422);
+        }
 
         // 3. توليد رمز عشوائي من 6 أرقام وتحديد وقت الانتهاء
         $otpCode = rand(100000, 999999);
@@ -87,10 +113,14 @@ class OtpAuthController extends Controller
         ]);
 
         // 2. البحث عن المستخدم
-        $user = User::query()
-            ->when($request->email, fn($query) => $query->where('email', $request->email))
-            ->when($request->phone, fn($query) => $query->where('phone', $request->phone))
-            ->first();
+        $user = $this->resolveOtpUser($request);
+
+        if (! $user) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'الإيميل ورقم الهاتف لا يخصّان نفس المستخدم، يرجى إعادة المحاولة ببيانات متطابقة.',
+            ], 422);
+        }
 
         // 3. التأكد من صحة الرمز
         if ($user->otp_code != $request->otp_code) {

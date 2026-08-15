@@ -15,6 +15,23 @@ use Illuminate\Support\Facades\Storage;
 
 class VendorOrderController extends Controller
 {
+    private function getStoredImagePaths($images): array
+    {
+        if (empty($images)) {
+            return [];
+        }
+
+        if (is_string($images)) {
+            $decoded = json_decode($images, true);
+            return is_array($decoded) ? $decoded : [];
+        }
+
+        if (is_array($images)) {
+            return $images;
+        }
+
+        return [];
+    }
 
     // إنشاء خدمة جديدة (تذهب للأدمن كمراجعة أولاً)
     public function store(Request $request)
@@ -92,7 +109,7 @@ class VendorOrderController extends Controller
 
         // في حال رفع صور جديدة: نحذف الصور القديمة من التخزين ونستبدلها بالجديدة
         if ($request->hasFile('images')) {
-            foreach ($service->images ?? [] as $oldImage) {
+            foreach ($this->getStoredImagePaths($service->getRawOriginal('images')) as $oldImage) {
                 Storage::disk('public')->delete($oldImage);
             }
 
