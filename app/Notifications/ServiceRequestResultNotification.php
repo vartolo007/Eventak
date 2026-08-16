@@ -32,24 +32,24 @@ class ServiceRequestResultNotification extends Notification
 
         switch ($this->result) {
             case 'approved':
-                $title = 'تمت الموافقة على خدمتك ✅';
-                $message = "تمت الموافقة على الخدمة ({$name}) وأصبحت الآن نشطة ومعروضة في التطبيق.";
+                $title = __('messages.notifications.service_result_approved_title');
+                $message = __('messages.notifications.service_result_approved_message', ['service_name' => $name]);
                 break;
             case 'rejected':
-                $title = 'تم رفض خدمتك ❌';
-                $message = "تم رفض الخدمة ({$name}) وتحويلها إلى غير نشطة. يمكنك تعديلها وإعادة إرسالها.";
+                $title = __('messages.notifications.service_result_rejected_title');
+                $message = __('messages.notifications.service_result_rejected_message', ['service_name' => $name]);
                 break;
             case 'delete_approved':
-                $title = 'تمت الموافقة على حذف الخدمة 🗑️';
-                $message = "تمت الموافقة على طلب حذف الخدمة ({$name}) وتمت إزالتها نهائياً من النظام.";
+                $title = __('messages.notifications.service_result_delete_approved_title');
+                $message = __('messages.notifications.service_result_delete_approved_message', ['service_name' => $name]);
                 break;
             case 'delete_rejected':
-                $title = 'تم رفض طلب حذف الخدمة';
-                $message = "تم رفض طلب حذف الخدمة ({$name})، وأعيدت نشطة ومتوفرة في التطبيق.";
+                $title = __('messages.notifications.service_result_delete_rejected_title');
+                $message = __('messages.notifications.service_result_delete_rejected_message', ['service_name' => $name]);
                 break;
             default:
-                $title = 'تحديث بخصوص خدمتك';
-                $message = "هناك تحديث جديد بخصوص الخدمة ({$name}).";
+                $title = __('messages.notifications.service_result_default_title');
+                $message = __('messages.notifications.service_result_default_message', ['service_name' => $name]);
         }
 
         $data = [
@@ -75,24 +75,24 @@ class ServiceRequestResultNotification extends Notification
 
         switch ($this->result) {
             case 'approved':
-                $title = 'تمت الموافقة على خدمتك ✅';
-                $message = "تمت الموافقة على الخدمة ({$name}) وأصبحت الآن نشطة ومعروضة في التطبيق.";
+                $title = __('messages.notifications.service_result_approved_title');
+                $message = __('messages.notifications.service_result_approved_message', ['service_name' => $name]);
                 break;
             case 'rejected':
-                $title = 'تم رفض خدمتك ❌';
-                $message = "تم رفض الخدمة ({$name}) وتحويلها إلى غير نشطة. يمكنك تعديلها وإعادة إرسالها.";
+                $title = __('messages.notifications.service_result_rejected_title');
+                $message = __('messages.notifications.service_result_rejected_message', ['service_name' => $name]);
                 break;
             case 'delete_approved':
-                $title = 'تمت الموافقة على حذف الخدمة 🗑️';
-                $message = "تمت الموافقة على طلب حذف الخدمة ({$name}) وتمت إزالتها نهائياً من النظام.";
+                $title = __('messages.notifications.service_result_delete_approved_title');
+                $message = __('messages.notifications.service_result_delete_approved_message', ['service_name' => $name]);
                 break;
             case 'delete_rejected':
-                $title = 'تم رفض طلب حذف الخدمة';
-                $message = "تم رفض طلب حذف الخدمة ({$name})، وأعيدت نشطة ومتوفرة في التطبيق.";
+                $title = __('messages.notifications.service_result_delete_rejected_title');
+                $message = __('messages.notifications.service_result_delete_rejected_message', ['service_name' => $name]);
                 break;
             default:
-                $title = 'تحديث بخصوص خدمتك';
-                $message = "هناك تحديث جديد بخصوص الخدمة ({$name}).";
+                $title = __('messages.notifications.service_result_default_title');
+                $message = __('messages.notifications.service_result_default_message', ['service_name' => $name]);
         }
 
         return [

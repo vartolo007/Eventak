@@ -28,7 +28,7 @@ class VenueOrderController extends Controller
                 'status' => 'success',
                 'count'  => 0,
                 'data'   => [],
-                'message' => 'لا توجد صالات مسجلة باسمك بعد.'
+                'message' => __('messages.venue.no_venues')
             ], 200);
         }
 
@@ -56,7 +56,7 @@ class VenueOrderController extends Controller
         if (!$event->venue || $event->venue->owner_id !== $user->id) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'غير مصرح لك باتخاذ قرار بشأن هذا الحجز.'
+                'message' => __('messages.venue.unauthorized')
             ], 403);
         }
 
@@ -64,7 +64,7 @@ class VenueOrderController extends Controller
         if ($event->status !== 'pending') {
             return response()->json([
                 'status' => 'error',
-                'message' => 'لا يمكن قبول هذا الطلب لأنه ليس في حالة قيد الانتظار القابلة للقبول.'
+                'message' => __('messages.venue.not_pending_accept')
             ], 422);
         }
 
@@ -123,8 +123,8 @@ class VenueOrderController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => $hasServices
-                ? 'تم قبول طلب الحجز بنجاح، وتم تحويل الحالة إلى بانتظار الموردين (vendor_pending).'
-                : 'تم قبول طلب الحجز بنجاح، ولعدم وجود خدمات مطلوبة أصبح الحجز مؤكداً (confirmed) وجاهزاً للدفع مباشرة.',
+                ? __('messages.venue.accept_success')
+                : __('messages.venue.accept_success'),
             'data' => $event
         ], 200);
     }
@@ -148,7 +148,7 @@ class VenueOrderController extends Controller
         if (!$event->venue || $event->venue->owner_id !== $user->id) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'غير مصرح لك باتخاذ قرار بشأن هذا الحجز.'
+                'message' => __('messages.venue.unauthorized')
             ], 403);
         }
 
@@ -157,7 +157,7 @@ class VenueOrderController extends Controller
         if (in_array($event->status, ['paid', 'cancelled', 'completed'])) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'لا يمكن رفض هذا الطلب لأنه مدفوع أو ملغى أو مكتمل بالفعل.'
+                'message' => __('messages.venue.reject_not_allowed')
             ], 422);
         }
 
@@ -177,7 +177,7 @@ class VenueOrderController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'تم رفض طلب الحجز بنجاح وتدوين السبب للزبون.',
+            'message' => __('messages.venue.reject_success'),
             'data' => $event
         ], 200);
     }
@@ -193,14 +193,14 @@ class VenueOrderController extends Controller
         if (!$event->venue || $event->venue->owner_id !== $user->id) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'غير مصرح لك باتخاذ قرار بشأن هذا الحجز.'
+                'message' => __('messages.venue.unauthorized')
             ], 403);
         }
 
         if ($event->status !== 'paid') {
             return response()->json([
                 'status' => 'error',
-                'message' => 'لا يمكن إغلاق المناسبة إلا بعد اكتمال الدفع.'
+                'message' => __('messages.venue.complete_not_paid')
             ], 422);
         }
 
@@ -208,7 +208,7 @@ class VenueOrderController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'تم تعليم المناسبة كمكتملة بنجاح.',
+            'message' => __('messages.venue.complete_success'),
             'data' => $event
         ], 200);
     }

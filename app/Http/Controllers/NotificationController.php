@@ -36,7 +36,7 @@ class NotificationController extends Controller
 
         return response()->json([
             'status'  => 'success',
-            'message' => 'تم تحديث رمز FCM بنجاح.',
+            'message' => __('messages.notification.fcm_token_updated'),
             'data'    => null,
         ]);
     }
@@ -62,7 +62,7 @@ class NotificationController extends Controller
         if (!$token) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'لا يوجد رمز FCM مسجل لهذا المستخدم.',
+                'message' => __('messages.notification.fcm_token_missing'),
             ], 400);
         }
 
@@ -77,13 +77,13 @@ class NotificationController extends Controller
 
             return response()->json([
                 'status'  => 'success',
-                'message' => 'تم إرسال الإشعار بنجاح!',
+                'message' => __('messages.notification.fcm_sent_success'),
                 'data'    => null,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'فشل إرسال الإشعار: ' . $e->getMessage(),
+                'message' => __('messages.notification.fcm_send_failed', ['error' => $e->getMessage()]),
             ], 500);
         }
     }
@@ -119,14 +119,14 @@ class NotificationController extends Controller
             $notification->markAsRead();
             return response()->json([
                 'status'  => 'success',
-                'message' => 'تم تعيين الإشعار كمقروء.',
+                'message' => __('messages.notification.marked_read'),
                 'data'    => $notification,
             ]);
         }
 
         return response()->json([
             'status'  => 'error',
-            'message' => 'الإشعار غير موجود.',
+            'message' => __('messages.notification.not_found'),
             'data'    => null,
         ], 404);
     }

@@ -25,7 +25,7 @@ class IsCustomer
         // إرجاع استجابة منع واضحة ومفهومة للفرونت إند في حال كان الدور مختلفاً
         return response()->json([
             'status' => 'error',
-            'message' => 'غير مصرح لك بالوصول، هذه الصلاحية مخصصة للزبائن فقط.'
+            'message' => __('messages.access.forbidden_customer')
         ], 403);
     }
 }

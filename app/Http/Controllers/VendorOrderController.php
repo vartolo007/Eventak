@@ -41,7 +41,7 @@ class VendorOrderController extends Controller
         if ($user->role !== 'vendor') {
             return response()->json([
                 'status' => 'error',
-                'message' => 'فقط الموردين يمكنهم إضافة خدمات'
+                'message' => __('messages.vendor.vendor_only')
             ], 403);
         }
 
@@ -81,7 +81,7 @@ class VendorOrderController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'تم إرسال طلب إضافة الخدمة للأدمن بنجاح وهو قيد المراجعة الآن.',
+            'message' => __('messages.vendor.service_store_success'),
             'data' => $service
         ], 201);
     }
@@ -95,7 +95,7 @@ class VendorOrderController extends Controller
         if ($service->vendor_id !== $user->id) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'ليس لديك صلاحية تعديل هذه الخدمة'
+                'message' => __('messages.vendor.service_update_permission_denied')
             ], 403);
         }
 
@@ -132,7 +132,7 @@ class VendorOrderController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'تم تحديث البيانات وإرسال طلب التعديل للأدمن للمراجعة.',
+            'message' => __('messages.vendor.service_update_success'),
             'data' => $service
         ]);
     }
@@ -146,7 +146,7 @@ class VendorOrderController extends Controller
         if ($service->vendor_id !== $user->id) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'ليس لديك صلاحية حذف هذه الخدمة'
+                'message' => __('messages.vendor.service_delete_permission_denied')
             ], 403);
         }
 
@@ -161,7 +161,7 @@ class VendorOrderController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'تم تقديم طلب حذف الخدمة للأدمن بنجاح، ستتم إزالتها فور الموافقة.'
+            'message' => __('messages.vendor.service_delete_success')
         ]);
     }
 
@@ -232,12 +232,12 @@ class VendorOrderController extends Controller
         $service = Service::findOrFail($serviceId); // جلب الخدمة لتمريرها للإشعار
 
         if ($event->status !== 'vendor_pending') {
-            return response()->json(['status' => 'error', 'message' => 'هذه المناسبة ليست في مرحلة مراجعة الموردين.'], 422);
+            return response()->json(['status' => 'error', 'message' => __('messages.vendor.event_not_vendor_pending')], 422);
         }
 
         $servicePivot = $event->services()->where('service_id', $serviceId)->where('vendor_id', $user->id)->first();
         if (!$servicePivot) {
-            return response()->json(['status' => 'error', 'message' => 'هذه الخدمة غير موجودة أو غير تابعة لك.'], 403);
+            return response()->json(['status' => 'error', 'message' => __('messages.vendor.service_not_owned')], 403);
         }
 
         // تحديث السجل في الجدول الوسيط
@@ -251,7 +251,7 @@ class VendorOrderController extends Controller
         // خوارزمية فحص اكتمال موافقة بقية الموردين (لتصعيد المناسبة بالكامل إذا نجحت)
         $this->checkAndUpgradeEventStatus($event);
 
-        return response()->json(['status' => 'success', 'message' => 'تم قبول تلبية الخدمة بنجاح، وإشعار الزبون.'], 200);
+        return response()->json(['status' => 'success', 'message' => __('messages.vendor.service_accept_success')], 200);
     }
 
     /**
@@ -264,12 +264,12 @@ class VendorOrderController extends Controller
         $service = Service::findOrFail($serviceId);
 
         if ($event->status !== 'vendor_pending') {
-            return response()->json(['status' => 'error', 'message' => 'لا يمكن اتخاذ إجراء حالياً.'], 422);
+            return response()->json(['status' => 'error', 'message' => __('messages.vendor.service_reject_not_actionable')], 422);
         }
 
         $servicePivot = $event->services()->where('service_id', $serviceId)->where('vendor_id', $user->id)->first();
         if (!$servicePivot) {
-            return response()->json(['status' => 'error', 'message' => 'هذه الخدمة غير موجودة أو غير تابعة لك.'], 403);
+            return response()->json(['status' => 'error', 'message' => __('messages.vendor.service_not_owned')], 403);
         }
 
         // تحديث السجل في الجدول الوسيط إلى مرفوض
@@ -286,7 +286,7 @@ class VendorOrderController extends Controller
             $event->customer->notify(new VendorRejectedServiceNotification($event, $service));
         }
 
-        return response()->json(['status' => 'success', 'message' => 'تم اعتذار المورد عن الخدمة، وإلغاء المناسبة وإشعار الزبون.'], 200);
+        return response()->json(['status' => 'success', 'message' => __('messages.vendor.service_reject_success')], 200);
     }
 
     /**

@@ -28,24 +28,33 @@ class NewVenueRequestNotification extends Notification
 
     public function toArray($notifiable)
     {
-        $ownerName = $this->venueRequest->owner->name ?? 'صاحب صالة';
+        $ownerName = $this->venueRequest->owner->name ?? __('messages.auth.user_mismatch');
 
         switch ($this->requestType) {
             case 'create':
-                $title = 'طلب إضافة صالة جديدة';
-                $message = "قام صاحب الصالة {$ownerName} بتقديم طلب إضافة صالة جديدة باسم ({$this->venueRequest->name}) وبانتظار مراجعتك.";
+                $title = __('messages.notifications.venue_request_create_title');
+                $message = __('messages.notifications.venue_request_create_message', [
+                    'owner_name' => $ownerName,
+                    'venue_name' => $this->venueRequest->name,
+                ]);
                 break;
             case 'update':
-                $title = 'طلب تعديل بيانات صالة';
-                $message = "قام صاحب الصالة {$ownerName} بتعديل بيانات الصالة ({$this->venueRequest->name}) وبانتظار موافقتك على التعديلات.";
+                $title = __('messages.notifications.venue_request_update_title');
+                $message = __('messages.notifications.venue_request_update_message', [
+                    'owner_name' => $ownerName,
+                    'venue_name' => $this->venueRequest->name,
+                ]);
                 break;
             case 'delete':
-                $title = 'طلب حذف صالة حرج! ⚠️';
-                $message = "يرغب صاحب الصالة {$ownerName} بحذف صالته ({$this->venueRequest->name}) نهائياً من النظام.";
+                $title = __('messages.notifications.venue_request_delete_title');
+                $message = __('messages.notifications.venue_request_delete_message', [
+                    'owner_name' => $ownerName,
+                    'venue_name' => $this->venueRequest->name,
+                ]);
                 break;
             default:
-                $title = 'طلب جديد بخصوص الصالات';
-                $message = 'هناك تحديث جديد بحاجة لمراجعتك.';
+                $title = __('messages.notifications.venue_request_default_title');
+                $message = __('messages.notifications.venue_request_default_message');
         }
 
         $data = [
@@ -65,26 +74,35 @@ class NewVenueRequestNotification extends Notification
      */
     public function toFcm(object $notifiable): array
     {
-        $ownerName = $this->venueRequest->owner->name ?? 'صاحب صالة';
+        $ownerName = $this->venueRequest->owner->name ?? __('messages.auth.user_mismatch');
         $title = '';
         $message = '';
 
         switch ($this->requestType) {
             case 'create':
-                $title = 'طلب إضافة صالة جديدة';
-                $message = "قام صاحب الصالة {$ownerName} بتقديم طلب إضافة صالة جديدة باسم ({$this->venueRequest->name}) وبانتظار مراجعتك.";
+                $title = __('messages.notifications.venue_request_create_title');
+                $message = __('messages.notifications.venue_request_create_message', [
+                    'owner_name' => $ownerName,
+                    'venue_name' => $this->venueRequest->name,
+                ]);
                 break;
             case 'update':
-                $title = 'طلب تعديل بيانات صالة';
-                $message = "قام صاحب الصالة {$ownerName} بتعديل بيانات الصالة ({$this->venueRequest->name}) وبانتظار موافقتك على التعديلات.";
+                $title = __('messages.notifications.venue_request_update_title');
+                $message = __('messages.notifications.venue_request_update_message', [
+                    'owner_name' => $ownerName,
+                    'venue_name' => $this->venueRequest->name,
+                ]);
                 break;
             case 'delete':
-                $title = 'طلب حذف صالة حرج! ⚠️';
-                $message = "يرغب صاحب الصالة {$ownerName} بحذف صالته ({$this->venueRequest->name}) نهائياً من النظام.";
+                $title = __('messages.notifications.venue_request_delete_title');
+                $message = __('messages.notifications.venue_request_delete_message', [
+                    'owner_name' => $ownerName,
+                    'venue_name' => $this->venueRequest->name,
+                ]);
                 break;
             default:
-                $title = 'طلب جديد بخصوص الصالات';
-                $message = 'هناك تحديث جديد بحاجة لمراجعتك.';
+                $title = __('messages.notifications.venue_request_default_title');
+                $message = __('messages.notifications.venue_request_default_message');
         }
 
         return [

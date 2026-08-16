@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\IsAdmin;
+use App\Http\Middleware\SetLocaleFromHeader;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -13,7 +14,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // 💡 هنا نقوم بتسجيل المديل وير وإعطائه اسماً مستعاراً
+        $middleware->use([SetLocaleFromHeader::class]);
+
         $middleware->alias([
             'isAdmin' => IsAdmin::class,
             'isVenueOwner' => \App\Http\Middleware\IsVenueOwner::class,

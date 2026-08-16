@@ -33,8 +33,11 @@ class InvoicePaidNotification extends Notification
             'event_id' => $this->event->id,
             'payment_id' => $this->payment->id,
             'type' => 'invoice_paid',
-            'title' => 'تم استلام الدفعة 💰',
-            'message' => "قام الزبون بدفع فاتورة مناسبة ({$this->event->event_name}) بمبلغ ({$this->payment->amount}) بنجاح، الحجز أصبح معتمداً ومدفوعاً بالكامل.",
+            'title' => __('messages.notifications.invoice_paid_title'),
+            'message' => __('messages.notifications.invoice_paid_message', [
+                'event_name' => $this->event->event_name,
+                'amount' => $this->payment->amount,
+            ]),
         ];
 
         return $data;
@@ -48,8 +51,11 @@ class InvoicePaidNotification extends Notification
     public function toFcm(object $notifiable): array
     {
         return [
-            'title' => 'تم استلام الدفعة 💰',
-            'message' => "قام الزبون بدفع فاتورة مناسبة ({$this->event->event_name}) بمبلغ ({$this->payment->amount}) بنجاح، الحجز أصبح معتمداً ومدفوعاً بالكامل.",
+            'title' => __('messages.notifications.invoice_paid_title'),
+            'message' => __('messages.notifications.invoice_paid_message', [
+                'event_name' => $this->event->event_name,
+                'amount' => $this->payment->amount,
+            ]),
             'data' => [
                 'type' => 'invoice_paid',
                 'event_id' => $this->event->id,

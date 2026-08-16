@@ -24,7 +24,7 @@ class RatingController extends Controller
         if ($event->customer_id !== $user->id) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'ليس لديك صلاحية تقييم هذه المناسبة'
+                'message' => __('messages.rating.unauthorized')
             ], 403);
         }
 
@@ -32,7 +32,7 @@ class RatingController extends Controller
         if ($event->status !== 'completed') {
             return response()->json([
                 'status' => 'error',
-                'message' => 'لا يمكنك تقييم المناسبة إلا بعد اكتمالها.'
+                'message' => __('messages.rating.not_completed')
             ], 422);
         }
 
@@ -40,7 +40,7 @@ class RatingController extends Controller
         if (Rating::where('event_id', $event->id)->exists()) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'لقد قمت بتقييم هذه المناسبة مسبقاً.'
+                'message' => __('messages.rating.already_rated')
             ], 422);
         }
 
@@ -53,7 +53,7 @@ class RatingController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'شكراً لك! تم تسجيل تقييمك بنجاح.',
+            'message' => __('messages.rating.created_success'),
             'data' => $rating
         ], 201);
     }
@@ -67,7 +67,7 @@ class RatingController extends Controller
         if ($event->customer_id !== $user->id) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'ليس لديك صلاحية عرض تقييم هذه المناسبة'
+                'message' => __('messages.rating.view_unauthorized')
             ], 403);
         }
 

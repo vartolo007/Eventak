@@ -28,19 +28,24 @@ class EventCancelledByCustomerNotification extends Notification
 
     public function toArray($notifiable): array
     {
-        $message = "قام الزبون بإلغاء حجز مناسبة ({$this->event->event_name}) بتاريخ {$this->event->date}.";
+        $message = __('messages.notifications.booking_cancelled_by_customer_message', [
+            'event_name' => $this->event->event_name,
+            'date' => $this->event->date,
+        ]);
 
-        // إذا كان الحجز مدفوعاً نوضح قيمة المبلغ المسترجع للزبون بحسب سياسة الاسترجاع
         if (!is_null($this->refundAmount)) {
             $message .= $this->refundAmount > 0
-                ? " تم استرجاع مبلغ ({$this->refundAmount}) للزبون بحسب سياسة الاسترجاع."
-                : " لم يُسترجع أي مبلغ للزبون لأن الإلغاء تم قبل أقل من 48 ساعة من الموعد.";
+                ? ' ' . __('messages.event.cancel_success_refund', [
+                    'amount' => $this->refundAmount,
+                    'percent' => 100,
+                ])
+                : ' ' . __('messages.event.cancel_success_no_refund');
         }
 
         $data = [
             'event_id' => $this->event->id,
             'type' => 'booking_cancelled_by_customer',
-            'title' => 'تم إلغاء الحجز من قبل الزبون ❌',
+            'title' => __('messages.notifications.booking_cancelled_by_customer_title'),
             'message' => $message,
         ];
 
@@ -54,16 +59,22 @@ class EventCancelledByCustomerNotification extends Notification
      */
     public function toFcm(object $notifiable): array
     {
-        $message = "قام الزبون بإلغاء حجز مناسبة ({$this->event->event_name}) بتاريخ {$this->event->date}.";
+        $message = __('messages.notifications.booking_cancelled_by_customer_message', [
+            'event_name' => $this->event->event_name,
+            'date' => $this->event->date,
+        ]);
 
         if (!is_null($this->refundAmount)) {
             $message .= $this->refundAmount > 0
-                ? " تم استرجاع مبلغ ({$this->refundAmount}) للزبون بحسب سياسة الاسترجاع."
-                : " لم يُسترجع أي مبلغ للزبون لأن الإلغاء تم قبل أقل من 48 ساعة من الموعد.";
+                ? ' ' . __('messages.event.cancel_success_refund', [
+                    'amount' => $this->refundAmount,
+                    'percent' => 100,
+                ])
+                : ' ' . __('messages.event.cancel_success_no_refund');
         }
 
         return [
-            'title' => 'تم إلغاء الحجز من قبل الزبون ❌',
+            'title' => __('messages.notifications.booking_cancelled_by_customer_title'),
             'message' => $message,
             'data' => ['type' => 'booking_cancelled_by_customer', 'event_id' => $this->event->id]
         ];

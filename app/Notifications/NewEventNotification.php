@@ -27,8 +27,11 @@ class NewEventNotification extends Notification
     {
         return [
             'event_id' => $this->event->id,
-            'title' => 'طلب مناسبة جديد',
-            'message' => "لديك طلب مناسبة جديد ({$this->event->event_name}) من الزبون {$this->event->customer->name} بانتظار مراجعتك.",
+            'title' => __('messages.notifications.new_event_request_title'),
+            'message' => __('messages.notifications.new_event_request_message', [
+                'event_name' => $this->event->event_name,
+                'customer_name' => $this->event->customer->name,
+            ]),
             'type' => 'new_event_request'
         ];
     }
@@ -36,8 +39,11 @@ class NewEventNotification extends Notification
     public function toFcm(object $notifiable): array
     {
         return [
-            'title' => 'طلب مناسبة جديد',
-            'message' => "لديك طلب مناسبة جديد ({$this->event->event_name}) من الزبون {$this->event->customer->name} بانتظار مراجعتك.",
+            'title' => __('messages.notifications.new_event_request_title'),
+            'message' => __('messages.notifications.new_event_request_message', [
+                'event_name' => $this->event->event_name,
+                'customer_name' => $this->event->customer->name,
+            ]),
             'data' => ['type' => 'new_event_request', 'event_id' => $this->event->id]
         ];
     }

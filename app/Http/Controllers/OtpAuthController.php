@@ -51,7 +51,7 @@ class OtpAuthController extends Controller
         if (! $user) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'الإيميل ورقم الهاتف لا يخصّان نفس المستخدم، يرجى إرسال أحدهما فقط أو التأكد من التطابق.',
+                'message' => __('messages.auth.user_mismatch'),
             ], 422);
         }
 
@@ -70,7 +70,7 @@ class OtpAuthController extends Controller
 
             return response()->json([
                 'status'  => 'success',
-                'message' => 'تم إرسال رمز الدخول إلى بريدك الإلكتروني بنجاح.'
+                'message' => __('messages.auth.otp_sent_email')
             ]);
         } elseif ($request->has('phone')) {
             // -- إرسال عبر الواتساب --
@@ -83,18 +83,18 @@ class OtpAuthController extends Controller
                 if ($response->successful()) {
                     return response()->json([
                         'status'  => 'success',
-                        'message' => 'تم إرسال رمز التحقق إلى الواتساب بنجاح.'
+                        'message' => __('messages.auth.otp_sent_whatsapp')
                     ]);
                 } else {
                     return response()->json([
                         'status'  => 'error',
-                        'message' => 'فشل سيرفر الواتساب المحلي في معالجة الإرسال.'
+                        'message' => __('messages.auth.otp_send_failed_whatsapp')
                     ], 500);
                 }
             } catch (\Exception $e) {
                 return response()->json([
                     'status'  => 'error',
-                    'message' => 'تعذر الاتصال ببوابة الواتساب، تأكد من تشغيل سيرفر Node.js.'
+                    'message' => __('messages.auth.otp_send_failed_connection')
                 ], 500);
             }
         }
@@ -118,18 +118,18 @@ class OtpAuthController extends Controller
         if (! $user) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'الإيميل ورقم الهاتف لا يخصّان نفس المستخدم، يرجى إعادة المحاولة ببيانات متطابقة.',
+                'message' => __('messages.auth.user_mismatch_retry'),
             ], 422);
         }
 
         // 3. التأكد من صحة الرمز
         if ($user->otp_code != $request->otp_code) {
-            return response()->json(['status' => 'error', 'message' => 'الرمز غير صحيح.'], 401);
+            return response()->json(['status' => 'error', 'message' => __('messages.auth.otp_invalid')], 401);
         }
 
         // 4. التأكد من صلاحية الوقت
         if (Carbon::now()->greaterThan($user->otp_expires_at)) {
-            return response()->json(['status' => 'error', 'message' => 'الرمز منتهي الصلاحية، يرجى طلب رمز جديد.'], 401);
+            return response()->json(['status' => 'error', 'message' => __('messages.auth.otp_expired')], 401);
         }
 
         // 5. تصفير حقول الرمز للأمان وتحديث حالة الحساب
@@ -145,7 +145,7 @@ class OtpAuthController extends Controller
 
         return response()->json([
             'status'  => 'success',
-            'message' => 'تم التحقق بنجاح، أهلاً بك عزيزي ' . $user->name,
+            'message' => __('messages.auth.otp_verified', ['name' => $user->name]),
             'user'    => $user,
             'token'   => $token
         ]);

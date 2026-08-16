@@ -81,7 +81,7 @@ class VenueController extends Controller
 
         return response()->json([
             'status'  => 'success',
-            'message' => 'تم إرسال طلب إضافة الصالة للأدمن بنجاح وهو قيد المراجعة حالياً.',
+            'message' => __('messages.venue.store_success'),
             'data'    => $venueRequest,
         ], 201);
     }
@@ -97,7 +97,7 @@ class VenueController extends Controller
         if ($venue->owner_id !== $user->id) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'ليس لديك صلاحية تعديل بيانات هذه الصالة',
+                'message' => __('messages.venue.update_permission_denied'),
             ], 403);
         }
 
@@ -147,7 +147,7 @@ class VenueController extends Controller
 
         return response()->json([
             'status'  => 'success',
-            'message' => 'تم إرسال طلب التعديل للأدمن بنجاح وبقيت الصالة القديمة نشطة حتى يوافق.',
+            'message' => __('messages.venue.update_success'),
             'data'    => $venueRequest,
         ], 200);
     }
@@ -163,7 +163,7 @@ class VenueController extends Controller
         if ($venue->owner_id !== $user->id) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'ليس لديك صلاحية حذف هذه الصالة',
+                'message' => __('messages.venue.delete_permission_denied'),
             ], 403);
         }
 
@@ -187,7 +187,7 @@ class VenueController extends Controller
 
         return response()->json([
             'status'  => 'success',
-            'message' => 'تم تقديم طلب حذف الصالة للأدمن، وستبقى معروضة حتى يوافق على مسحها.',
+            'message' => __('messages.venue.delete_success'),
         ], 200);
     }
 

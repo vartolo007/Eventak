@@ -36,7 +36,7 @@ class AdminController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'تم إضافة المورد بنجاح، يمكنه الآن الدخول عبر الـ OTP',
+            'message' => __('messages.admin.user_added_success'),
             'user'    => $user,
         ]);
     }
@@ -66,7 +66,7 @@ class AdminController extends Controller
 
             return response()->json([
                 'status'  => 'success',
-                'message' => 'تمت الموافقة على طلب الحذف، وتمت إزالة الخدمة نهائياً من النظام.',
+                'message' => __('messages.admin.service_delete_approved'),
             ], 200);
         }
 
@@ -81,14 +81,14 @@ class AdminController extends Controller
 
             return response()->json([
                 'status'  => 'success',
-                'message' => 'تمت الموافقة على الخدمة وتفعيلها بنجاح، وهي الآن معروضة في التطبيق.',
+                'message' => __('messages.admin.service_approved'),
                 'data'    => $service,
             ], 200);
         }
 
         return response()->json([
             'status'  => 'error',
-            'message' => 'هذه الخدمة ليست بحاجة إلى موافقة حالياً.',
+            'message' => __('messages.admin.service_no_action_required'),
         ], 400);
     }
 
@@ -110,7 +110,7 @@ class AdminController extends Controller
 
             return response()->json([
                 'status'  => 'success',
-                'message' => 'تم رفض طلب الحذف، وأعيدت الخدمة نشطة ومتوفرة في التطبيق.',
+                'message' => __('messages.admin.service_delete_rejected'),
                 'data'    => $service,
             ], 200);
         }
@@ -126,14 +126,14 @@ class AdminController extends Controller
 
             return response()->json([
                 'status'  => 'success',
-                'message' => 'تم رفض طلب الخدمة، وتم تحويل حالتها إلى غير نشطة (inactive).',
+                'message' => __('messages.admin.service_rejected'),
                 'data'    => $service,
             ], 200);
         }
 
         return response()->json([
             'status'  => 'error',
-            'message' => 'هذه الخدمة ليست في حالة مراجعة لطلب الرفض.',
+            'message' => __('messages.admin.service_reject_not_pending'),
         ], 400);
     }
 
@@ -160,7 +160,7 @@ class AdminController extends Controller
         $venueRequest = VenueRequest::findOrFail($requestId);
 
         if ($venueRequest->status !== 'pending') {
-            return response()->json(['status' => 'error', 'message' => 'هذا الطلب معالج مسبقاً'], 400);
+            return response()->json(['status' => 'error', 'message' => __('messages.admin.venue_request_already_processed')], 400);
         }
 
         // 1. موافقة على إضافة صالة جديدة كلياً
@@ -223,7 +223,7 @@ class AdminController extends Controller
 
         return response()->json([
             'status'  => 'success',
-            'message' => 'تمت معالجة طلب الصالة والموافقة عليه بنجاح وتحديث البيانات الحية.',
+            'message' => __('messages.admin.venue_request_approved'),
         ], 200);
     }
 
@@ -239,7 +239,7 @@ class AdminController extends Controller
         if ($venueRequest->status !== 'pending') {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'هذا الطلب تم اتخاذ إجراء سابق عليه بالفعل.',
+                'message' => __('messages.admin.venue_request_already_processed'),
             ], 400);
         }
 
@@ -258,20 +258,20 @@ class AdminController extends Controller
         switch ($venueRequest->type) {
             case 'create':
                 $this->deleteVenueRequestFiles($venueRequest);
-                $message = 'تم رفض طلب إنشاء الصالة بنجاح، ولن تظهر في النظام.';
+                $message = __('messages.admin.venue_request_rejected_create');
                 break;
 
             case 'update':
                 $this->deleteVenueRequestFiles($venueRequest);
-                $message = 'تم رفض طلب التعديل، وبقيت بيانات الصالة الأصلية الحية دون أي تغيير.';
+                $message = __('messages.admin.venue_request_rejected_update');
                 break;
 
             case 'delete':
-                $message = 'تم رفض طلب الحذف، وظلت الصالة نشطة ومتاحة للحجوزات في التطبيق.';
+                $message = __('messages.admin.venue_request_rejected_delete');
                 break;
 
             default:
-                $message = 'تم رفض الطلب بنجاح.';
+                $message = __('messages.admin.venue_request_rejected');
         }
 
         // 🔔 إشعار صاحب الصالة برفض طلبه مع السبب
@@ -437,7 +437,7 @@ class AdminController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'تم إنشاء تصنيف الخدمة بنجاح.',
+            'message' => __('messages.admin.category_created'),
             'category' => $category
         ], 201);
     }
@@ -462,7 +462,7 @@ class AdminController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'تم تحديث تصنيف الخدمة بنجاح.',
+            'message' => __('messages.admin.category_updated'),
             'category' => $category
         ]);
     }
@@ -481,7 +481,7 @@ class AdminController extends Controller
         if ($category->services()->count() > 0) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'لا يمكن حذف التصنيف لوجود خدمات مرتبطة به. يرجى إعادة تعيين الخدمات أو حذفها أولاً.'
+                'message' => __('messages.admin.category_delete_blocked')
             ], 409); // Conflict
         }
 
@@ -489,7 +489,7 @@ class AdminController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'تم حذف تصنيف الخدمة بنجاح.'
+            'message' => __('messages.admin.category_deleted')
         ]);
     }
 }

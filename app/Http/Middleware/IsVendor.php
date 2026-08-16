@@ -17,7 +17,7 @@ class IsVendor
         if (!$request->user()) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'يجب تسجيل الدخول أولاً للوصول إلى هذه الصلاحية.'
+                'message' => __('messages.access.login_required')
             ], 401);
         }
 
@@ -25,7 +25,7 @@ class IsVendor
         if ($request->user()->role !== 'vendor') {
             return response()->json([
                 'status' => 'error',
-                'message' => 'غير مسموح! هذه الصلاحية مخصصة للموردين فقط.'
+                'message' => __('messages.access.forbidden_vendor')
             ], 403); // كود 403 يعني Forbidden (غير مصرح)
         }
 

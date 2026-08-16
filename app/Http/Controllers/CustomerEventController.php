@@ -35,7 +35,7 @@ class CustomerEventController extends Controller
             ->get();
 
 
-            
+
             return response()->json([
             'status' => 'success',
             'count'  => $venues->count(),
@@ -84,7 +84,7 @@ class CustomerEventController extends Controller
         if ($request->guests_count > $venue->capacity) {
             return response()->json([
                 'status'  => 'error',
-                'message' => "عدد الضيوف يتجاوز القدرة الاستيعابية ({$venue->capacity}) شخص.",
+                'message' => __('messages.event.guests_exceed_capacity', ['capacity' => $venue->capacity]),
             ], 422);
         }
 
@@ -119,7 +119,7 @@ class CustomerEventController extends Controller
             if ($requestedStart->lt($existingEndWithCleaning) && $requestedEndWithCleaning->gt($existingStart)) {
                 return response()->json([
                     'status'         => 'error',
-                    'message'        => 'عذراً، هذا الوقت غير متاح للحجز. الصالة مشغولة بحجز آخر أو تقع ضمن ساعة التنظيف الإلزامية للمناسبة السابقة.',
+                    'message'        => __('messages.event.time_unavailable'),
                     'conflict_event' => [
                         'start_time'      => $existingStart->format('H:i'),           // عرض وقت البدء منسق بدون ثواني للزبون
                         'end_time'        => $existingEnd->format('H:i'),             // عرض وقت الانتهاء منسق بدون ثواني للزبون
@@ -204,7 +204,7 @@ class CustomerEventController extends Controller
 
         return response()->json([
             'status'  => 'success',
-            'message' => 'تم إنشاء المناسبة بنجاح بانتظار الموافقة.',
+            'message' => __('messages.event.created_success'),
             'data'    => [
                 'event_id'       => $event->id,
                 'event_name'     => $event->event_name,
@@ -251,7 +251,7 @@ class CustomerEventController extends Controller
         if (! $eventRequest) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'عذراً، الطلب غير موجود أو لا تملك صلاحية الوصول إليه.',
+                'message' => __('messages.event.request_not_found'),
             ], 404);
         }
 
@@ -281,7 +281,7 @@ class CustomerEventController extends Controller
         if (! $event) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'عذراً، الحجز غير موجود أو لا تملك صلاحية الوصول إليه.',
+                'message' => __('messages.event.not_found_or_forbidden'),
             ], 404);
         }
 
@@ -289,7 +289,7 @@ class CustomerEventController extends Controller
         if (in_array($event->status, ['completed', 'cancelled'])) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'لا يمكن إلغاء هذا الحجز لأنه مكتمل أو ملغى بالفعل.',
+                'message' => __('messages.event.already_cancelled_or_completed'),
             ], 422);
         }
 
@@ -316,7 +316,7 @@ class CustomerEventController extends Controller
             if (! $payment) {
                 return response()->json([
                     'status'  => 'error',
-                    'message' => 'تعذر العثور على سجل الدفع المرتبط بهذا الحجز، يرجى مراجعة الإدارة.',
+                    'message' => __('messages.event.payment_record_missing'),
                 ], 422);
             }
 
@@ -394,10 +394,10 @@ class CustomerEventController extends Controller
         return response()->json([
             'status'  => 'success',
             'message' => is_null($refundPercent)
-                ? 'تم إلغاء الحجز بنجاح.'
+                ? __('messages.event.cancel_success')
                 : ($refundAmount > 0
-                    ? "تم إلغاء الحجز بنجاح، وسيتم استرجاع مبلغ ({$refundAmount}) أي ما يعادل {$refundPercent}% من قيمة الفاتورة."
-                    : 'تم إلغاء الحجز بنجاح، ولا يوجد مبلغ مسترجع لأن الإلغاء تم قبل أقل من 48 ساعة من الموعد.'),
+                    ? __('messages.event.cancel_success_refund', ['amount' => $refundAmount, 'percent' => $refundPercent])
+                    : __('messages.event.cancel_success_no_refund')),
             'data' => [
                 'event_id'       => $event->id,
                 'event_status'   => $event->status,

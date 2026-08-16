@@ -40,7 +40,7 @@ class UserController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'تم تحديث بيانات الحساب الشخصي بنجاح.',
+            'message' => __('messages.user.profile_updated'),
             'data' => $user
         ]);
     }
@@ -66,7 +66,7 @@ class UserController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'تم رفع الصورة الشخصية بنجاح.',
+            'message' => __('messages.user.avatar_uploaded'),
             'avatar_url' => asset('storage/' . $path)
         ]);
     }
@@ -83,7 +83,7 @@ class UserController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'تم حذف الصورة الشخصية بنجاح والعوّدة للصورة الافتراضية.'
+            'message' => __('messages.user.avatar_deleted')
         ]);
     }
 

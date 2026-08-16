@@ -29,7 +29,7 @@ class OtpMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'رمز الدخول المؤقت - Eventak',
+            subject: __('messages.notifications.otp_email_subject'),
         );
     }
 

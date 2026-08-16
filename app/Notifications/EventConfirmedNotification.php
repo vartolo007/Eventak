@@ -14,14 +14,14 @@ class EventConfirmedNotification extends Notification
 
     public function __construct($event) { $this->event = $event; }
 
-    public function via($notifiable): array { return ['database']; }
+    public function via($notifiable): array { return ['database', FcmChannel::class]; }
 
     public function toArray($notifiable): array
     {
         return [
             'event_id' => $this->event->id,
-            'title' => 'حجزك مؤكد وجاهز للدفع ✅',
-            'message' => "اكتملت الموافقات على مناسبتك ({$this->event->event_name}) بتاريخ {$this->event->date}، وأصبح الحجز مؤكداً بالكامل وبانتظار دفع الفاتورة لاعتماده.",
+            'title' => __('messages.notifications.booking_confirmed_title'),
+            'message' => __('messages.notifications.booking_confirmed_message', ['event_name' => $this->event->event_name, 'date' => $this->event->date]),
             'type' => 'booking_confirmed'
         ];
     }
@@ -34,8 +34,8 @@ class EventConfirmedNotification extends Notification
     public function toFcm(object $notifiable): array
     {
         return [
-            'title' => 'حجزك مؤكد وجاهز للدفع ✅',
-            'message' => "اكتملت الموافقات على مناسبتك ({$this->event->event_name}) بتاريخ {$this->event->date}، وأصبح الحجز مؤكداً بالكامل وبانتظار دفع الفاتورة لاعتماده.",
+            'title' => __('messages.notifications.booking_confirmed_title'),
+            'message' => __('messages.notifications.booking_confirmed_message', ['event_name' => $this->event->event_name, 'date' => $this->event->date]),
             'data' => ['type' => 'booking_confirmed', 'event_id' => $this->event->id]
         ];
     }

@@ -37,24 +37,33 @@ class NewServiceRequestNotification extends Notification
      */
     public function toArray($notifiable)
     {
-        $vendorName = $this->service->vendor->name ?? 'مورد';
+        $vendorName = $this->service->vendor->name ?? __('messages.auth.user_mismatch');
 
         switch ($this->requestType) {
             case 'create':
-                $title = 'طلب إضافة خدمة جديدة';
-                $message = "قام المورد {$vendorName} بإضافة خدمة جديدة باسم ({$this->service->name}) وهي بحاجة لمراجعتك وقبولها.";
+                $title = __('messages.notifications.service_request_create_title');
+                $message = __('messages.notifications.service_request_create_message', [
+                    'vendor_name' => $vendorName,
+                    'service_name' => $this->service->name,
+                ]);
                 break;
             case 'update':
-                $title = 'طلب تعديل خدمة';
-                $message = "قام المورد {$vendorName} بتعديل بيانات الخدمة ({$this->service->name}) وبانتظار موافقتك على التعديلات.";
+                $title = __('messages.notifications.service_request_update_title');
+                $message = __('messages.notifications.service_request_update_message', [
+                    'vendor_name' => $vendorName,
+                    'service_name' => $this->service->name,
+                ]);
                 break;
             case 'delete':
-                $title = 'طلب حذف خدمة ⚠️';
-                $message = "يرغب المورد {$vendorName} بحذف الخدمة ({$this->service->name}) بشكل نهائي من التطبيق.";
+                $title = __('messages.notifications.service_request_delete_title');
+                $message = __('messages.notifications.service_request_delete_message', [
+                    'vendor_name' => $vendorName,
+                    'service_name' => $this->service->name,
+                ]);
                 break;
             default:
-                $title = 'طلب مراجعة جديد';
-                $message = 'هناك تحديث جديد على الخدمات بحاجة لمراجعتك.';
+                $title = __('messages.notifications.service_request_default_title');
+                $message = __('messages.notifications.service_request_default_message');
         }
 
         $data = [
@@ -74,26 +83,35 @@ class NewServiceRequestNotification extends Notification
      */
     public function toFcm(object $notifiable): array
     {
-        $vendorName = $this->service->vendor->name ?? 'مورد';
+        $vendorName = $this->service->vendor->name ?? __('messages.auth.user_mismatch');
         $title = '';
         $message = '';
 
         switch ($this->requestType) {
             case 'create':
-                $title = 'طلب إضافة خدمة جديدة';
-                $message = "قام المورد {$vendorName} بإضافة خدمة جديدة باسم ({$this->service->name}) وهي بحاجة لمراجعتك وقبولها.";
+                $title = __('messages.notifications.service_request_create_title');
+                $message = __('messages.notifications.service_request_create_message', [
+                    'vendor_name' => $vendorName,
+                    'service_name' => $this->service->name,
+                ]);
                 break;
             case 'update':
-                $title = 'طلب تعديل خدمة';
-                $message = "قام المورد {$vendorName} بتعديل بيانات الخدمة ({$this->service->name}) وبانتظار موافقتك على التعديلات.";
+                $title = __('messages.notifications.service_request_update_title');
+                $message = __('messages.notifications.service_request_update_message', [
+                    'vendor_name' => $vendorName,
+                    'service_name' => $this->service->name,
+                ]);
                 break;
             case 'delete':
-                $title = 'طلب حذف خدمة ⚠️';
-                $message = "يرغب المورد {$vendorName} بحذف الخدمة ({$this->service->name}) بشكل نهائي من التطبيق.";
+                $title = __('messages.notifications.service_request_delete_title');
+                $message = __('messages.notifications.service_request_delete_message', [
+                    'vendor_name' => $vendorName,
+                    'service_name' => $this->service->name,
+                ]);
                 break;
             default:
-                $title = 'طلب مراجعة جديد';
-                $message = 'هناك تحديث جديد على الخدمات بحاجة لمراجعتك.';
+                $title = __('messages.notifications.service_request_default_title');
+                $message = __('messages.notifications.service_request_default_message');
         }
 
         return [

@@ -35,14 +35,14 @@ class PaymentController extends Controller
         if (! $invoice->event) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'هذه الفاتورة غير مرتبطة بمناسبة صالحة.',
+                'message' => __('messages.payment.invoice_invalid'),
             ], 404);
         }
 
         if ($invoice->event->customer_id !== $user->id) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'ليس لديك صلاحية الدفع لهذه الفاتورة'
+                'message' => __('messages.payment.no_payment_permission')
             ], 403);
         }
 
@@ -54,7 +54,7 @@ class PaymentController extends Controller
         if ($alreadyPaid) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'هذه الفاتورة مدفوعة مسبقاً، لا يمكن الدفع مرة أخرى.'
+                'message' => __('messages.payment.already_paid')
             ], 422);
         }
 
@@ -62,7 +62,7 @@ class PaymentController extends Controller
         if ($invoice->event->status !== 'confirmed') {
             return response()->json([
                 'status' => 'error',
-                'message' => 'لا يمكنك دفع قيمة الفاتورة حالياً، الحجز لم يتم تأكيده بعد من الإدارة أو الموردين.'
+                'message' => __('messages.payment.not_confirmed')
             ], 422);
         }
 
@@ -70,7 +70,7 @@ class PaymentController extends Controller
         if ($validated['amount'] != $invoice->total_amount) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'المبلغ المدفوع لا يطابق إجمالي الفاتورة. المبلغ المطلوب هو ' . $invoice->total_amount . '.'
+                'message' => __('messages.payment.amount_mismatch', ['amount' => $invoice->total_amount])
             ], 422);
         }
 
@@ -79,7 +79,7 @@ class PaymentController extends Controller
             if ($validated['expiry_year'] == now()->year && $validated['expiry_month'] < now()->month) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'البطاقة منتهية الصلاحية.'
+                    'message' => __('messages.payment.card_expired')
                 ], 422);
             }
         }
@@ -128,7 +128,7 @@ class PaymentController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'تم الدفع بنجاح',
+            'message' => __('messages.payment.paid_success'),
             'data' => [
                 'payment_id' => $payment->id,
                 'event_id' => $event->id,
@@ -150,7 +150,7 @@ class PaymentController extends Controller
         if (! $payment->invoice || ! $payment->invoice->event) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'بيانات الدفع غير مكتملة أو الفاتورة غير مرتبطة بمناسبة.',
+                'message' => __('messages.payment.payment_data_incomplete'),
             ], 404);
         }
 
@@ -158,7 +158,7 @@ class PaymentController extends Controller
         if ($payment->invoice->event->customer_id !== $user->id) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'ليس لديك صلاحية عرض هذا الدفع'
+                'message' => __('messages.payment.show_payment_forbidden')
             ], 403);
         }
 
@@ -177,7 +177,7 @@ class PaymentController extends Controller
         if (! $invoice->event) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'هذه الفاتورة غير مرتبطة بمناسبة صالحة.',
+                'message' => __('messages.payment.invoice_invalid'),
             ], 404);
         }
 
@@ -185,7 +185,7 @@ class PaymentController extends Controller
         if ($invoice->event->customer_id !== $user->id) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'ليس لديك صلاحية عرض هذه الفاتورة'
+                'message' => __('messages.payment.show_payment_forbidden')
             ], 403);
         }
 
@@ -234,13 +234,13 @@ class PaymentController extends Controller
         if (!$invoice || ! $invoice->event || $invoice->event->customer_id !== $user->id) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'عذراً، الفاتورة غير موجودة، أو تم دفعها بالفعل، أو لا تملك صلاحية الوصول إليها.'
+                'message' => __('messages.payment.invoice_details_not_found')
             ], 404);
         }
 
         return response()->json([
             'status' => 'success',
-            'message' => 'تم جلب تفاصيل الفاتورة بانتظار الدفع بنجاح.',
+            'message' => __('messages.payment.invoice_details_success'),
             'data' => $invoice
         ]);
     }

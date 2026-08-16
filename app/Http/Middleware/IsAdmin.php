@@ -24,6 +24,6 @@ class IsAdmin
             return $next($request);
         }
 
-        return response()->json(['message' => 'غير مصرح لك بالوصول، هذه الصلاحية للإدارة فقط'], 403);
+        return response()->json(['message' => __('messages.access.forbidden_admin')], 403);
     }
 }

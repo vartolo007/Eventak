@@ -21,6 +21,6 @@ class IsVenueOwner
             return $next($request);
         }
 
-        return response()->json(['message' => 'غير مصرح لك بالوصول، هذه الصلاحية لأصحاب الصالات فقط.'], 403);
+        return response()->json(['message' => __('messages.access.forbidden_venue_owner')], 403);
     }
 }

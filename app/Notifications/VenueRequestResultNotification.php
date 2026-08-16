@@ -34,39 +34,39 @@ class VenueRequestResultNotification extends Notification
         if ($this->result === 'approved') {
             switch ($type) {
                 case 'create':
-                    $title = 'تمت الموافقة على إضافة صالتك ✅';
-                    $message = "تمت الموافقة على إضافة الصالة ({$name}) وأصبحت الآن نشطة ومتاحة للحجز.";
+                    $title = __('messages.notifications.venue_result_approved_title');
+                    $message = __('messages.notifications.venue_result_approved_message', ['venue_name' => $name]);
                     break;
                 case 'update':
-                    $title = 'تمت الموافقة على تعديل صالتك ✅';
-                    $message = "تمت الموافقة على تعديلات الصالة ({$name}) وتم تحديث بياناتها الحية.";
+                    $title = __('messages.notifications.venue_result_approved_title');
+                    $message = __('messages.notifications.venue_result_approved_message', ['venue_name' => $name]);
                     break;
                 case 'delete':
-                    $title = 'تمت الموافقة على حذف الصالة 🗑️';
-                    $message = "تمت الموافقة على حذف الصالة ({$name}) وتمت إزالتها من النظام.";
+                    $title = __('messages.notifications.venue_result_approved_title');
+                    $message = __('messages.notifications.venue_result_approved_message', ['venue_name' => $name]);
                     break;
                 default:
-                    $title = 'تمت الموافقة على طلبك ✅';
-                    $message = "تمت الموافقة على طلبك بخصوص الصالة ({$name}).";
+                    $title = __('messages.notifications.venue_result_approved_title');
+                    $message = __('messages.notifications.venue_result_approved_message', ['venue_name' => $name]);
             }
         } else {
-            $reason = $this->venueRequest->admin_notes ? " السبب: {$this->venueRequest->admin_notes}" : '';
+            $reason = $this->venueRequest->admin_notes ? " " . $this->venueRequest->admin_notes : '';
             switch ($type) {
                 case 'create':
-                    $title = 'تم رفض إضافة صالتك ❌';
-                    $message = "تم رفض طلب إضافة الصالة ({$name}).{$reason}";
+                    $title = __('messages.notifications.venue_result_rejected_title');
+                    $message = __('messages.notifications.venue_result_rejected_message', ['venue_name' => $name]) . $reason;
                     break;
                 case 'update':
-                    $title = 'تم رفض تعديل صالتك ❌';
-                    $message = "تم رفض تعديلات الصالة ({$name})، وبقيت البيانات الأصلية دون تغيير.{$reason}";
+                    $title = __('messages.notifications.venue_result_rejected_title');
+                    $message = __('messages.notifications.venue_result_rejected_message', ['venue_name' => $name]) . $reason;
                     break;
                 case 'delete':
-                    $title = 'تم رفض حذف الصالة';
-                    $message = "تم رفض طلب حذف الصالة ({$name})، وبقيت نشطة ومتاحة للحجز.{$reason}";
+                    $title = __('messages.notifications.venue_result_rejected_title');
+                    $message = __('messages.notifications.venue_result_rejected_message', ['venue_name' => $name]) . $reason;
                     break;
                 default:
-                    $title = 'تم رفض طلبك ❌';
-                    $message = "تم رفض طلبك بخصوص الصالة ({$name}).{$reason}";
+                    $title = __('messages.notifications.venue_result_rejected_title');
+                    $message = __('messages.notifications.venue_result_rejected_message', ['venue_name' => $name]) . $reason;
             }
         }
 
@@ -95,39 +95,39 @@ class VenueRequestResultNotification extends Notification
         if ($this->result === 'approved') {
             switch ($type) {
                 case 'create':
-                    $title = 'تمت الموافقة على إضافة صالتك ✅';
-                    $message = "تمت الموافقة على إضافة الصالة ({$name}) وأصبحت الآن نشطة ومتاحة للحجز.";
+                    $title = __('messages.notifications.venue_result_approved_title');
+                    $message = __('messages.notifications.venue_result_approved_message', ['venue_name' => $name]);
                     break;
                 case 'update':
-                    $title = 'تمت الموافقة على تعديل صالتك ✅';
-                    $message = "تمت الموافقة على تعديلات الصالة ({$name}) وتم تحديث بياناتها الحية.";
+                    $title = __('messages.notifications.venue_result_approved_title');
+                    $message = __('messages.notifications.venue_result_approved_message', ['venue_name' => $name]);
                     break;
                 case 'delete':
-                    $title = 'تمت الموافقة على حذف الصالة 🗑️';
-                    $message = "تمت الموافقة على حذف الصالة ({$name}) وتمت إزالتها من النظام.";
+                    $title = __('messages.notifications.venue_result_approved_title');
+                    $message = __('messages.notifications.venue_result_approved_message', ['venue_name' => $name]);
                     break;
                 default:
-                    $title = 'تمت الموافقة على طلبك ✅';
-                    $message = "تمت الموافقة على طلبك بخصوص الصالة ({$name}).";
+                    $title = __('messages.notifications.venue_result_approved_title');
+                    $message = __('messages.notifications.venue_result_approved_message', ['venue_name' => $name]);
             }
         } else {
-            $reason = $this->venueRequest->admin_notes ? " السبب: {$this->venueRequest->admin_notes}" : '';
+            $reason = $this->venueRequest->admin_notes ? " " . $this->venueRequest->admin_notes : '';
             switch ($type) {
                 case 'create':
-                    $title = 'تم رفض إضافة صالتك ❌';
-                    $message = "تم رفض طلب إضافة الصالة ({$name}).{$reason}";
+                    $title = __('messages.notifications.venue_result_rejected_title');
+                    $message = __('messages.notifications.venue_result_rejected_message', ['venue_name' => $name]) . $reason;
                     break;
                 case 'update':
-                    $title = 'تم رفض تعديل صالتك ❌';
-                    $message = "تم رفض تعديلات الصالة ({$name})، وبقيت البيانات الأصلية دون تغيير.{$reason}";
+                    $title = __('messages.notifications.venue_result_rejected_title');
+                    $message = __('messages.notifications.venue_result_rejected_message', ['venue_name' => $name]) . $reason;
                     break;
                 case 'delete':
-                    $title = 'تم رفض حذف الصالة';
-                    $message = "تم رفض طلب حذف الصالة ({$name})، وأعيدت نشطة ومتوفرة في التطبيق.{$reason}";
+                    $title = __('messages.notifications.venue_result_rejected_title');
+                    $message = __('messages.notifications.venue_result_rejected_message', ['venue_name' => $name]) . $reason;
                     break;
                 default:
-                    $title = 'تم رفض طلبك ❌';
-                    $message = "تم رفض طلبك بخصوص الصالة ({$name}).{$reason}";
+                    $title = __('messages.notifications.venue_result_rejected_title');
+                    $message = __('messages.notifications.venue_result_rejected_message', ['venue_name' => $name]) . $reason;
             }
         }
 

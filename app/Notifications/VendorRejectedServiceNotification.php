@@ -33,8 +33,11 @@ class VendorRejectedServiceNotification extends Notification
             'event_id' => $this->event->id,
             'service_id' => $this->service->id,
             'type' => 'vendor_service_rejected',
-            'title' => 'اعتذار عن تقديم خدمة ⚠️',
-            'message' => "نعتذر منك، لقد اعتذر المورد عن تقديم خدمة ({$this->service->name}) لمناسبتك ({$this->event->event_name})، ولذلك تم إلغاء الطلب لتتمكن من إعادة التنسيق.",
+            'title' => __('messages.notifications.vendor_service_rejected_title'),
+            'message' => __('messages.notifications.vendor_service_rejected_message', [
+                'service_name' => $this->service->name,
+                'event_name' => $this->event->event_name,
+            ]),
         ];
 
         return $data;
@@ -48,8 +51,11 @@ class VendorRejectedServiceNotification extends Notification
     public function toFcm(object $notifiable): array
     {
         return [
-            'title' => 'اعتذار عن تقديم خدمة ⚠️',
-            'message' => "نعتذر منك، لقد اعتذر المورد عن تقديم خدمة ({$this->service->name}) لمناسبتك ({$this->event->event_name})، ولذلك تم إلغاء الطلب لتتمكن من إعادة التنسيق.",
+            'title' => __('messages.notifications.vendor_service_rejected_title'),
+            'message' => __('messages.notifications.vendor_service_rejected_message', [
+                'service_name' => $this->service->name,
+                'event_name' => $this->event->event_name,
+            ]),
             'data' => [
                 'type' => 'vendor_service_rejected',
                 'event_id' => $this->event->id,

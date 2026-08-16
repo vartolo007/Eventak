@@ -33,7 +33,7 @@ class ResetPasswordController extends Controller
         Mail::to($user->email)->send(new OtpMail($otpCode));
 
         return response()->json([
-            'message' => 'تم إرسال رمز استعادة كلمة المرور إلى بريدك الإلكتروني.'
+            'message' => __('messages.auth.password_reset_email_sent')
         ]);
     }
 
@@ -53,12 +53,12 @@ class ResetPasswordController extends Controller
 
         // التحقق من صحة الرمز
         if ($user->otp_code !== $request->otp_code) {
-            return response()->json(['message' => 'الرمز غير صحيح.'], 401);
+            return response()->json(['message' => __('messages.auth.otp_invalid')], 401);
         }
 
         // التحقق من صلاحية الوقت
         if (Carbon::now()->greaterThan($user->otp_expires_at)) {
-            return response()->json(['message' => 'الرمز منتهي الصلاحية، يرجى طلب رمز جديد.'], 401);
+            return response()->json(['message' => __('messages.auth.otp_expired')], 401);
         }
 
         // تحديث كلمة المرور وتشفيرها، وتصفير حقول الرمز للحماية
@@ -69,7 +69,7 @@ class ResetPasswordController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'تم تغيير كلمة المرور بنجاح. يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.'
+            'message' => __('messages.auth.password_changed')
         ]);
     }
 }

@@ -33,8 +33,11 @@ class VendorApprovedServiceNotification extends Notification
             'event_id' => $this->event->id,
             'service_id' => $this->service->id,
             'type' => 'vendor_service_approved',
-            'title' => 'تحديث بشأن الخدمات 🚚',
-            'message' => "وافق المورد على تقديم خدمة ({$this->service->name}) لمناسبتك الحاملة لاسم ({$this->event->event_name}).",
+            'title' => __('messages.notifications.vendor_service_approved_title'),
+            'message' => __('messages.notifications.vendor_service_approved_message', [
+                'service_name' => $this->service->name,
+                'event_name' => $this->event->event_name,
+            ]),
         ];
 
         return $data;
@@ -48,8 +51,11 @@ class VendorApprovedServiceNotification extends Notification
     public function toFcm(object $notifiable): array
     {
         return [
-            'title' => 'تحديث بشأن الخدمات 🚚',
-            'message' => "وافق المورد على تقديم خدمة ({$this->service->name}) لمناسبتك الحاملة لاسم ({$this->event->event_name}).",
+            'title' => __('messages.notifications.vendor_service_approved_title'),
+            'message' => __('messages.notifications.vendor_service_approved_message', [
+                'service_name' => $this->service->name,
+                'event_name' => $this->event->event_name,
+            ]),
             'data' => [
                 'type' => 'vendor_service_approved',
                 'event_id' => $this->event->id,

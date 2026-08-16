@@ -46,7 +46,10 @@ class EventRejectedNotification extends Notification
                 'event_name' => $this->event->event_name,
                 'venue_name' => $this->event->venue->name ?? 'الصالة',
                 'date' => $this->event->date,
-                'message' => $this->customMessage ?? 'أهلاً بك! الصالة ' . ($this->event->venue->name ?? '') . ' أصبحت متاحة الآن في تاريخ ' . $this->event->date . ' بسبب إلغاء حجز سابق. يمكنك مراجعة طلبك أو تقديم طلب جديد.'
+                'message' => $this->customMessage ?? __('messages.notifications.venue_available_message', [
+                    'venue_name' => $this->event->venue->name ?? 'الصالة',
+                    'date' => $this->event->date,
+                ])
             ];
 
             return $data;
@@ -56,7 +59,10 @@ class EventRejectedNotification extends Notification
             'type' => 'event_rejected',
             'event_id' => $this->event->id,
             'event_name' => $this->event->event_name,
-            'message' => $this->customMessage ?? "عذراً، تم رفض طلب حجز مناسبتك ({$this->event->event_name}) بتاريخ {$this->event->date}.",
+            'message' => $this->customMessage ?? __('messages.notifications.event_rejected_message', [
+                'event_name' => $this->event->event_name,
+                'date' => $this->event->date,
+            ]),
         ];
     }
 
@@ -69,8 +75,11 @@ class EventRejectedNotification extends Notification
     {
         if ($this->notificationType === 'venue_available') {
             return [
-                'title' => 'صالة أصبحت متاحة!',
-                'message' => $this->customMessage ?? 'أهلاً بك! الصالة ' . ($this->event->venue->name ?? '') . ' أصبحت متاحة الآن في تاريخ ' . $this->event->date . ' بسبب إلغاء حجز سابق. يمكنك مراجعة طلبك أو تقديم طلب جديد.',
+                'title' => __('messages.notifications.venue_available_title'),
+                'message' => $this->customMessage ?? __('messages.notifications.venue_available_message', [
+                    'venue_name' => $this->event->venue->name ?? 'الصالة',
+                    'date' => $this->event->date,
+                ]),
                 'data' => [
                     'type' => 'venue_available',
                     'event_id' => $this->event->id,
@@ -82,8 +91,11 @@ class EventRejectedNotification extends Notification
         }
 
         return [
-            'title' => 'تم رفض طلب الحجز',
-            'message' => $this->customMessage ?? "عذراً، تم رفض طلب حجز مناسبتك ({$this->event->event_name}) بتاريخ {$this->event->date}.",
+            'title' => __('messages.notifications.event_rejected_title'),
+            'message' => $this->customMessage ?? __('messages.notifications.event_rejected_message', [
+                'event_name' => $this->event->event_name,
+                'date' => $this->event->date,
+            ]),
             'data' => ['type' => 'event_rejected', 'event_id' => $this->event->id]
         ];
     }

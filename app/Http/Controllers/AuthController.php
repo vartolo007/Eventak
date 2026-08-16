@@ -30,7 +30,7 @@ class AuthController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'تم إنشاء الحساب بنجاح',
+            'message' => __('messages.auth.register_success'),
             'data' => [
                 'user' => $user,
                 'token' => $token,
@@ -53,7 +53,7 @@ class AuthController extends Controller
         // التحقق من وجود المستخدم وصحة كلمة المرور
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
-                'message' => 'بيانات الدخول غير صحيحة'
+                'message' => __('messages.auth.login_failed')
             ], 401);
         }
 
@@ -62,7 +62,7 @@ class AuthController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'تم تسجيل الدخول بنجاح',
+            'message' => __('messages.auth.login_success'),
             'data' => [
                 'user' => $user,
                 'token' => $token,
@@ -83,7 +83,7 @@ class AuthController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'تم تسجيل الخروج بنجاح'
+            'message' => __('messages.auth.logout_success')
         ]);
     }
 }
