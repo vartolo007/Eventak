@@ -40,6 +40,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'otp_code',
+        'fcm_token',
     ];
 
     /**

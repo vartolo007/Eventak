@@ -20,20 +20,14 @@ class AdminController extends Controller
 {
     public function addUser(Request $request)
     {
-        $request->validate([
+        $validatedData = $request->validate([
             'name'  => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'phone' => 'required|string|unique:users,phone',
             'role'  => 'required|in:vendor,venue_owner', // تحديد نوع الحساب
         ]);
 
-        $user = User::create([
-            'name'  => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'role'  => $request->role,
-            // لا يوجد حقل كلمة مرور هنا، لأن المورد سيدخل عبر الـ OTP حصراً!
-        ]);
+        $user = User::create($validatedData);
 
         return response()->json([
             'message' => __('messages.admin.user_added_success'),
@@ -428,12 +422,12 @@ class AdminController extends Controller
      */
     public function storeServiceCategory(Request $request)
     {
-        $request->validate([
+        $validatedData = $request->validate([
             'name' => 'required|string|max:255|unique:service_categories,name',
             'description' => 'nullable|string',
         ]);
 
-        $category = ServiceCategory::create($request->all());
+        $category = ServiceCategory::create($validatedData);
 
         return response()->json([
             'status' => 'success',
@@ -453,12 +447,12 @@ class AdminController extends Controller
     {
         $category = ServiceCategory::findOrFail($id);
 
-        $request->validate([
+        $validatedData = $request->validate([
             'name' => 'required|string|max:255|unique:service_categories,name,' . $id,
             'description' => 'nullable|string',
         ]);
 
-        $category->update($request->all());
+        $category->update($validatedData);
 
         return response()->json([
             'status' => 'success',
