@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Models\Payment;
 use App\Models\Invoice;
 use App\Notifications\InvoicePaidNotification;
@@ -30,8 +31,8 @@ class PaymentController extends Controller
             'paypal_email' => 'required_if:payment_method,paypal|email',
         ]);
 
-        // التحقق من أن الفاتورة تابعة للزبون
-        $invoice = Invoice::findOrFail($validated['invoice_id']);
+        // التحقق من أن الفاتورة تابعة للزبون (فحص أولي قبل الدخول في Transaction)
+        $invoice = Invoice::with('event')->findOrFail($validated['invoice_id']);
         if (! $invoice->event) {
             return response()->json([
                 'status' => 'error',
@@ -46,34 +47,6 @@ class PaymentController extends Controller
             ], 403);
         }
 
-        // منع الدفع المزدوج: إذا الفاتورة مدفوعة أو يوجد دفع ناجح سابق لها
-        // (هذا الفحص قبل فحص حالة المناسبة حتى تصل رسالة واضحة لمن دفع مسبقاً)
-        $alreadyPaid = $invoice->status === 'paid'
-            || Payment::where('invoice_id', $invoice->id)->where('status', 'success')->exists();
-
-        if ($alreadyPaid) {
-            return response()->json([
-                'status' => 'error',
-                'message' => __('messages.payment.already_paid')
-            ], 422);
-        }
-
-        // التحقق من أن المناسبة مؤكدة وجاهزة للدفع فعلياً
-        if ($invoice->event->status !== 'confirmed') {
-            return response()->json([
-                'status' => 'error',
-                'message' => __('messages.payment.not_confirmed')
-            ], 422);
-        }
-
-        // التحقق من أن المبلغ المدفوع يطابق إجمالي الفاتورة
-        if ($validated['amount'] != $invoice->total_amount) {
-            return response()->json([
-                'status' => 'error',
-                'message' => __('messages.payment.amount_mismatch', ['amount' => $invoice->total_amount])
-            ], 422);
-        }
-
         // التحقق من انتهاء صلاحية البطاقة (الشهر والسنة معاً)
         if (in_array($validated['payment_method'], ['credit_card', 'debit_card'])) {
             if ($validated['expiry_year'] == now()->year && $validated['expiry_month'] < now()->month) {
@@ -84,61 +57,96 @@ class PaymentController extends Controller
             }
         }
 
-        // توليد رقم عملية وهمي (نخزن آخر 4 أرقام من البطاقة فقط للتوثيق - لا يتم تخزين رقم البطاقة كاملاً)
-        $reference = in_array($validated['payment_method'], ['credit_card', 'debit_card'])
-            ? substr($validated['card_number'], -4)
-            : $validated['payment_method'];
-        $transactionId = 'SIM-' . strtoupper(uniqid()) . '-' . $reference;
+        // ========== بداية DB Transaction مع قفل لمنع الدفع المزدوج ==========
+        return DB::transaction(function () use ($validated, $user) {
 
-        // إنشاء سجل الدفع (المحاكاة تنجح دائماً، والمبلغ يؤخذ من الفاتورة نفسها وليس من الزبون)
-        $payment = Payment::create([
-            'invoice_id' => $invoice->id,
-            'payment_method' => $validated['payment_method'],
-            'amount' => $invoice->total_amount,
-            'transaction_id' => $transactionId,
-            'status' => 'success',
-            'paid_at' => now()
-        ]);
+            // قفل الفاتورة (lockForUpdate) لمنع أي طلب متزامن من قراءتها حتى تنتهي هذه العملية
+            $invoice = Invoice::lockForUpdate()->findOrFail($validated['invoice_id']);
 
-        // تحديث حالة الفاتورة
-        $invoice->update(['status' => 'paid']);
+            // منع الدفع المزدوج: إذا الفاتورة مدفوعة أو يوجد دفع ناجح سابق لها
+            $alreadyPaid = $invoice->status === 'paid'
+                || Payment::where('invoice_id', $invoice->id)->where('status', 'success')->exists();
 
-        // تحديث حالة المناسبة
-        $event = $invoice->event;
-        $event->update([
-            'payment_id' => $payment->id,
-            'status' => 'paid'
-        ]);
+            if ($alreadyPaid) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => __('messages.payment.already_paid')
+                ], 422);
+            }
 
-        // 🔔 إشعار صاحب الصالة باستلام الدفعة
-        $venueOwner = $event->venue?->owner;
-        if ($venueOwner) {
-            $venueOwner->notify(new InvoicePaidNotification($event, $payment));
-        }
+            // التحقق من أن المناسبة مؤكدة وجاهزة للدفع فعلياً
+            if ($invoice->event->status !== 'confirmed') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => __('messages.payment.not_confirmed')
+                ], 422);
+            }
 
-        // 🔔 إشعار كل مورد مشارك بخدمات هذه المناسبة (مرة واحدة لكل مورد حتى لو لديه أكثر من خدمة)
-        $vendors = $event->services()->with('vendor')->get()
-            ->pluck('vendor')
-            ->filter()
-            ->unique('id');
+            // التحقق من أن المبلغ المدفوع يطابق إجمالي الفاتورة
+            if ($validated['amount'] != $invoice->total_amount) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => __('messages.payment.amount_mismatch', ['amount' => $invoice->total_amount])
+                ], 422);
+            }
 
-        foreach ($vendors as $vendor) {
-            $vendor->notify(new InvoicePaidNotification($event, $payment));
-        }
+            // توليد رقم عملية وهمي (نخزن آخر 4 أرقام من البطاقة فقط للتوثيق - لا يتم تخزين رقم البطاقة كاملاً)
+            $reference = in_array($validated['payment_method'], ['credit_card', 'debit_card'])
+                ? substr($validated['card_number'], -4)
+                : $validated['payment_method'];
+            $transactionId = 'SIM-' . strtoupper(uniqid()) . '-' . $reference;
 
-        return response()->json([
-            'status' => 'success',
-            'message' => __('messages.payment.paid_success'),
-            'data' => [
+            // إنشاء سجل الدفع (المحاكاة تنجح دائماً، والمبلغ يؤخذ من الفاتورة نفسها وليس من الزبون)
+            $payment = Payment::create([
+                'invoice_id' => $invoice->id,
+                'payment_method' => $validated['payment_method'],
+                'amount' => $invoice->total_amount,
+                'transaction_id' => $transactionId,
+                'status' => 'success',
+                'paid_at' => now()
+            ]);
+
+            // تحديث حالة الفاتورة
+            $invoice->update(['status' => 'paid']);
+
+            // تحديث حالة المناسبة
+            $event = $invoice->event;
+            $event->update([
                 'payment_id' => $payment->id,
-                'event_id' => $event->id,
-                'amount' => $payment->amount,
-                'payment_method' => $payment->payment_method,
-                'transaction_id' => $payment->transaction_id,
-                'status' => $payment->status,
-                'paid_at' => $payment->paid_at
-            ]
-        ], 201);
+                'status' => 'paid'
+            ]);
+
+            // 🔔 إشعار صاحب الصالة باستلام الدفعة
+            $venueOwner = $event->venue?->owner;
+            if ($venueOwner) {
+                $venueOwner->notify(new InvoicePaidNotification($event, $payment));
+            }
+
+            // 🔔 إشعار كل مورد مشارك بخدمات هذه المناسبة (مرة واحدة لكل مورد حتى لو لديه أكثر من خدمة)
+            $vendors = $event->services()->with('vendor')->get()
+                ->pluck('vendor')
+                ->filter()
+                ->unique('id');
+
+            foreach ($vendors as $vendor) {
+                $vendor->notify(new InvoicePaidNotification($event, $payment));
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => __('messages.payment.paid_success'),
+                'data' => [
+                    'payment_id' => $payment->id,
+                    'event_id' => $event->id,
+                    'amount' => $payment->amount,
+                    'payment_method' => $payment->payment_method,
+                    'transaction_id' => $payment->transaction_id,
+                    'status' => $payment->status,
+                    'paid_at' => $payment->paid_at
+                ]
+            ], 201);
+        });
+        // ========== نهاية DB Transaction ==========
     }
 
     // عرض سجل الدفع
