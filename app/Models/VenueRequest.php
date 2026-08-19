@@ -5,10 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Translatable\HasTranslations;
+use App\Traits\AutoTranslatable;
 
 class VenueRequest extends Model
 {
-    use HasFactory;
+    use HasFactory, HasTranslations, AutoTranslatable;
+
+    public array $translatable = ['name', 'address', 'description'];
 
     // الحقول المسموح بتعبئتها دفعة واحدة (Mass Assignment)
     protected $fillable = [

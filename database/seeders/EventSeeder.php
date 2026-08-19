@@ -28,13 +28,13 @@ class EventSeeder extends Seeder
             ]
         );
 
-        $diamondVenue = Venue::where('name', 'قاعة الماسة')->first();
-        $pearlVenue = Venue::where('name', 'قاعة اللؤلؤة')->first();
+        $diamondVenue = Venue::where('name->ar', 'قاعة الماسة')->first();
+        $pearlVenue = Venue::where('name->ar', 'قاعة اللؤلؤة')->first();
 
-        $photoService = Service::where('name', 'باقة تصوير كاملة (فيديو + صور)')->first();
-        $djService = Service::where('name', 'دي جي + نظام صوت وإضاءة')->first();
-        $decorService = Service::where('name', 'تنسيق وديكور القاعة')->first();
-        $cheapBuffetService = Service::where('name', 'بوفيه اقتصادي للقاعة')->first();
+        $photoService = Service::where('name->ar', 'باقة تصوير كاملة (فيديو + صور)')->first();
+        $djService = Service::where('name->ar', 'دي جي + نظام صوت وإضاءة')->first();
+        $decorService = Service::where('name->ar', 'تنسيق وديكور القاعة')->first();
+        $cheapBuffetService = Service::where('name->ar', 'بوفيه اقتصادي للقاعة')->first();
 
         $this->createEvent(
             customer: $customer,
@@ -78,7 +78,7 @@ class EventSeeder extends Seeder
         array $services,
         bool $withPayment,
     ): void {
-        if (Event::where('customer_id', $customer->id)->where('event_name', $eventName)->exists()) {
+        if (Event::where('customer_id', $customer->id)->where('event_name->ar', $eventName)->exists()) {
             return;
         }
 

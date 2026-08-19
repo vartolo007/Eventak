@@ -47,16 +47,20 @@ class VenueOwnerSeeder extends Seeder
                 ]
             );
 
-            Venue::firstOrCreate(
-                ['owner_id' => $owner->id, 'name' => $ownerData['venue']['name']],
-                [
+            $venueExists = Venue::where('owner_id', $owner->id)
+                ->where('name->ar', $ownerData['venue']['name'])
+                ->exists();
+            if (!$venueExists) {
+                Venue::create([
+                    'owner_id' => $owner->id,
+                    'name' => $ownerData['venue']['name'],
                     'address' => $ownerData['venue']['address'],
                     'capacity' => $ownerData['venue']['capacity'],
                     'price' => $ownerData['venue']['price'],
                     'description' => $ownerData['venue']['description'],
                     'status' => 'active',
-                ]
-            );
+                ]);
+            }
         }
     }
 }

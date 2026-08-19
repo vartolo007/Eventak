@@ -30,6 +30,7 @@ class User extends Authenticatable
         'phone_verified_at',
         'vendor_category_id',
         'fcm_token',
+        'locale',
     ];
 
     /**

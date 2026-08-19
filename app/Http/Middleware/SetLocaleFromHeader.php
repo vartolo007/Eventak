@@ -19,6 +19,11 @@ class SetLocaleFromHeader
         if ($resolvedLocale) {
             app()->setLocale($resolvedLocale);
             config(['app.locale' => $resolvedLocale]);
+
+            $user = $request->user();
+            if ($user && $user->locale !== $resolvedLocale) {
+                $user->update(['locale' => $resolvedLocale]);
+            }
         }
 
         return $next($request);

@@ -220,9 +220,10 @@ class VenueController extends Controller
 
         // 1. الفلترة حسب الاسم أو العنوان (البحث النصي)
         if ($request->has('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                    ->orWhere('address', 'like', '%' . $request->search . '%');
+            $locale = app()->getLocale();
+            $query->where(function ($q) use ($request, $locale) {
+                $q->where("name->{$locale}", 'like', '%' . $request->search . '%')
+                    ->orWhere("address->{$locale}", 'like', '%' . $request->search . '%');
             });
         }
 

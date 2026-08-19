@@ -18,10 +18,11 @@ class EventApprovedNotification extends Notification
 
     public function toArray($notifiable): array
     {
+        $locale = $notifiable->locale ?? config('app.locale');
         return [
             'event_id' => $this->event->id,
-            'title' => __('messages.notifications.booking_approved_title'),
-            'message' => __('messages.notifications.booking_approved_message', ['date' => $this->event->date]),
+            'title' => __('messages.notifications.booking_approved_title', [], $locale),
+            'message' => __('messages.notifications.booking_approved_message', ['date' => $this->event->date], $locale),
             'type' => 'booking_approved'
         ];
     }
@@ -33,9 +34,10 @@ class EventApprovedNotification extends Notification
      */
     public function toFcm(object $notifiable): array
     {
+        $locale = $notifiable->locale ?? config('app.locale');
         return [
-            'title' => __('messages.notifications.booking_approved_title'),
-            'message' => __('messages.notifications.booking_approved_message', ['date' => $this->event->date]),
+            'title' => __('messages.notifications.booking_approved_title', [], $locale),
+            'message' => __('messages.notifications.booking_approved_message', ['date' => $this->event->date], $locale),
             'data' => ['type' => 'booking_approved', 'event_id' => $this->event->id]
         ];
     }

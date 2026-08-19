@@ -39,30 +39,34 @@ class EventRejectedNotification extends Notification
      */
     public function toArray(object $notifiable): array
     {
+        $locale = $notifiable->locale ?? config('app.locale');
+        $eventName = $this->event->getTranslation('event_name', $locale);
+        $venueName = $this->event->venue
+            ? $this->event->venue->getTranslation('name', $locale)
+            : __('messages.venue.default_name', [], $locale);
+
         if ($this->notificationType === 'venue_available') {
-            $data = [
+            return [
                 'type' => 'venue_available',
                 'event_id' => $this->event->id,
-                'event_name' => $this->event->event_name,
-                'venue_name' => $this->event->venue->name ?? 'الصالة',
+                'event_name' => $eventName,
+                'venue_name' => $venueName,
                 'date' => $this->event->date,
                 'message' => $this->customMessage ?? __('messages.notifications.venue_available_message', [
-                    'venue_name' => $this->event->venue->name ?? 'الصالة',
+                    'venue_name' => $venueName,
                     'date' => $this->event->date,
-                ])
+                ], $locale),
             ];
-
-            return $data;
         }
 
         return [
             'type' => 'event_rejected',
             'event_id' => $this->event->id,
-            'event_name' => $this->event->event_name,
+            'event_name' => $eventName,
             'message' => $this->customMessage ?? __('messages.notifications.event_rejected_message', [
-                'event_name' => $this->event->event_name,
+                'event_name' => $eventName,
                 'date' => $this->event->date,
-            ]),
+            ], $locale),
         ];
     }
 
@@ -73,29 +77,35 @@ class EventRejectedNotification extends Notification
      */
     public function toFcm(object $notifiable): array
     {
+        $locale = $notifiable->locale ?? config('app.locale');
+        $eventName = $this->event->getTranslation('event_name', $locale);
+        $venueName = $this->event->venue
+            ? $this->event->venue->getTranslation('name', $locale)
+            : __('messages.venue.default_name', [], $locale);
+
         if ($this->notificationType === 'venue_available') {
             return [
-                'title' => __('messages.notifications.venue_available_title'),
+                'title' => __('messages.notifications.venue_available_title', [], $locale),
                 'message' => $this->customMessage ?? __('messages.notifications.venue_available_message', [
-                    'venue_name' => $this->event->venue->name ?? 'الصالة',
+                    'venue_name' => $venueName,
                     'date' => $this->event->date,
-                ]),
+                ], $locale),
                 'data' => [
                     'type' => 'venue_available',
                     'event_id' => $this->event->id,
-                    'event_name' => $this->event->event_name,
-                    'venue_name' => $this->event->venue->name ?? 'الصالة',
+                    'event_name' => $eventName,
+                    'venue_name' => $venueName,
                     'date' => $this->event->date,
                 ]
             ];
         }
 
         return [
-            'title' => __('messages.notifications.event_rejected_title'),
+            'title' => __('messages.notifications.event_rejected_title', [], $locale),
             'message' => $this->customMessage ?? __('messages.notifications.event_rejected_message', [
-                'event_name' => $this->event->event_name,
+                'event_name' => $eventName,
                 'date' => $this->event->date,
-            ]),
+            ], $locale),
             'data' => ['type' => 'event_rejected', 'event_id' => $this->event->id]
         ];
     }

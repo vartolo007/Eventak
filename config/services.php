@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'libretranslate' => [
+        'url' => env('LIBRETRANSLATE_URL', 'http://localhost:5000'),
+        'api_key' => env('LIBRETRANSLATE_API_KEY'),
+    ],
+
 ];

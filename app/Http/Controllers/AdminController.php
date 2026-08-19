@@ -159,17 +159,17 @@ class AdminController extends Controller
 
         // 1. موافقة على إضافة صالة جديدة كلياً
         if ($venueRequest->type === 'create') {
-            Venue::create([
-                'owner_id'    => $venueRequest->owner_id,
-                'name'        => $venueRequest->name,
-                'capacity'    => $venueRequest->capacity,
-                'price'       => $venueRequest->price,
-                'address'     => $venueRequest->address,
-                'description' => $venueRequest->description,
-                'cover_image' => $venueRequest->cover_image,
-                'images'      => $venueRequest->images,
-                'status'      => 'active',
-            ]);
+            $venue = new Venue();
+            $venue->owner_id = $venueRequest->owner_id;
+            $venue->capacity = $venueRequest->capacity;
+            $venue->price = $venueRequest->price;
+            $venue->cover_image = $venueRequest->cover_image;
+            $venue->images = $venueRequest->images;
+            $venue->status = 'active';
+            foreach (['name', 'address', 'description'] as $field) {
+                $venue->setTranslations($field, $venueRequest->getTranslations($field));
+            }
+            $venue->save();
         }
 
         // 2. موافقة على تعديل صالة قائمة
@@ -178,15 +178,14 @@ class AdminController extends Controller
             $oldCoverImage = $venue->cover_image;
             $oldImages = $venue->images ?? [];
 
-            $venue->update([
-                'name'        => $venueRequest->name,
-                'capacity'    => $venueRequest->capacity,
-                'price'       => $venueRequest->price,
-                'address'     => $venueRequest->address,
-                'description' => $venueRequest->description,
-                'cover_image' => $venueRequest->cover_image,
-                'images'      => $venueRequest->images,
-            ]);
+            $venue->capacity = $venueRequest->capacity;
+            $venue->price = $venueRequest->price;
+            $venue->cover_image = $venueRequest->cover_image;
+            $venue->images = $venueRequest->images;
+            foreach (['name', 'address', 'description'] as $field) {
+                $venue->setTranslations($field, $venueRequest->getTranslations($field));
+            }
+            $venue->save();
 
             if ($oldCoverImage && $oldCoverImage !== $venueRequest->cover_image) {
                 Storage::disk('public')->delete($oldCoverImage);
@@ -422,10 +421,20 @@ class AdminController extends Controller
      */
     public function storeServiceCategory(Request $request)
     {
+        $locale = app()->getLocale();
+
         $validatedData = $request->validate([
-            'name' => 'required|string|max:255|unique:service_categories,name',
+            'name' => 'required|string|max:255',
             'description' => 'nullable|string',
         ]);
+
+        $exists = ServiceCategory::where("name->{$locale}", $validatedData['name'])->exists();
+        if ($exists) {
+            return response()->json([
+                'status' => 'error',
+                'message' => __('validation.unique', ['attribute' => 'name']),
+            ], 422);
+        }
 
         $category = ServiceCategory::create($validatedData);
 
@@ -446,11 +455,22 @@ class AdminController extends Controller
     public function updateServiceCategory(Request $request, $id)
     {
         $category = ServiceCategory::findOrFail($id);
+        $locale = app()->getLocale();
 
         $validatedData = $request->validate([
-            'name' => 'required|string|max:255|unique:service_categories,name,' . $id,
+            'name' => 'required|string|max:255',
             'description' => 'nullable|string',
         ]);
+
+        $exists = ServiceCategory::where("name->{$locale}", $validatedData['name'])
+            ->where('id', '!=', $id)
+            ->exists();
+        if ($exists) {
+            return response()->json([
+                'status' => 'error',
+                'message' => __('validation.unique', ['attribute' => 'name']),
+            ], 422);
+        }
 
         $category->update($validatedData);
 

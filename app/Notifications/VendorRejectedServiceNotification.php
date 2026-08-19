@@ -29,18 +29,17 @@ class VendorRejectedServiceNotification extends Notification
 
     public function toArray($notifiable)
     {
-        $data = [
+        $locale = $notifiable->locale ?? config('app.locale');
+        return [
             'event_id' => $this->event->id,
             'service_id' => $this->service->id,
             'type' => 'vendor_service_rejected',
-            'title' => __('messages.notifications.vendor_service_rejected_title'),
+            'title' => __('messages.notifications.vendor_service_rejected_title', [], $locale),
             'message' => __('messages.notifications.vendor_service_rejected_message', [
-                'service_name' => $this->service->name,
-                'event_name' => $this->event->event_name,
-            ]),
+                'service_name' => $this->service->getTranslation('name', $locale),
+                'event_name' => $this->event->getTranslation('event_name', $locale),
+            ], $locale),
         ];
-
-        return $data;
     }
 
     /**
@@ -50,12 +49,13 @@ class VendorRejectedServiceNotification extends Notification
      */
     public function toFcm(object $notifiable): array
     {
+        $locale = $notifiable->locale ?? config('app.locale');
         return [
-            'title' => __('messages.notifications.vendor_service_rejected_title'),
+            'title' => __('messages.notifications.vendor_service_rejected_title', [], $locale),
             'message' => __('messages.notifications.vendor_service_rejected_message', [
-                'service_name' => $this->service->name,
-                'event_name' => $this->event->event_name,
-            ]),
+                'service_name' => $this->service->getTranslation('name', $locale),
+                'event_name' => $this->event->getTranslation('event_name', $locale),
+            ], $locale),
             'data' => [
                 'type' => 'vendor_service_rejected',
                 'event_id' => $this->event->id,

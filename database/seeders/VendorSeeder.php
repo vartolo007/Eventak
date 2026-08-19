@@ -55,7 +55,7 @@ class VendorSeeder extends Seeder
         ];
 
         foreach ($vendors as $vendorData) {
-            $category = ServiceCategory::where('name', $vendorData['category'])->first();
+            $category = ServiceCategory::where('name->ar', $vendorData['category'])->first();
 
             $vendor = User::firstOrCreate(
                 ['email' => $vendorData['email']],
@@ -68,15 +68,19 @@ class VendorSeeder extends Seeder
             );
 
             foreach ($vendorData['services'] as $serviceData) {
-                Service::firstOrCreate(
-                    ['vendor_id' => $vendor->id, 'name' => $serviceData['name']],
-                    [
+                $exists = Service::where('vendor_id', $vendor->id)
+                    ->where('name->ar', $serviceData['name'])
+                    ->exists();
+                if (!$exists) {
+                    Service::create([
+                        'vendor_id' => $vendor->id,
                         'category_id' => $category?->id,
+                        'name' => $serviceData['name'],
                         'description' => $serviceData['name'],
                         'price' => $serviceData['price'],
                         'status' => 'active',
-                    ]
-                );
+                    ]);
+                }
             }
         }
     }

@@ -28,56 +28,14 @@ class VenueRequestResultNotification extends Notification
 
     public function toArray($notifiable)
     {
-        $name = $this->venueRequest->name ?? 'صالتك';
-        $type = $this->venueRequest->type; // create | update | delete
-
-        if ($this->result === 'approved') {
-            switch ($type) {
-                case 'create':
-                    $title = __('messages.notifications.venue_result_approved_title');
-                    $message = __('messages.notifications.venue_result_approved_message', ['venue_name' => $name]);
-                    break;
-                case 'update':
-                    $title = __('messages.notifications.venue_result_approved_title');
-                    $message = __('messages.notifications.venue_result_approved_message', ['venue_name' => $name]);
-                    break;
-                case 'delete':
-                    $title = __('messages.notifications.venue_result_approved_title');
-                    $message = __('messages.notifications.venue_result_approved_message', ['venue_name' => $name]);
-                    break;
-                default:
-                    $title = __('messages.notifications.venue_result_approved_title');
-                    $message = __('messages.notifications.venue_result_approved_message', ['venue_name' => $name]);
-            }
-        } else {
-            $reason = $this->venueRequest->admin_notes ? " " . $this->venueRequest->admin_notes : '';
-            switch ($type) {
-                case 'create':
-                    $title = __('messages.notifications.venue_result_rejected_title');
-                    $message = __('messages.notifications.venue_result_rejected_message', ['venue_name' => $name]) . $reason;
-                    break;
-                case 'update':
-                    $title = __('messages.notifications.venue_result_rejected_title');
-                    $message = __('messages.notifications.venue_result_rejected_message', ['venue_name' => $name]) . $reason;
-                    break;
-                case 'delete':
-                    $title = __('messages.notifications.venue_result_rejected_title');
-                    $message = __('messages.notifications.venue_result_rejected_message', ['venue_name' => $name]) . $reason;
-                    break;
-                default:
-                    $title = __('messages.notifications.venue_result_rejected_title');
-                    $message = __('messages.notifications.venue_result_rejected_message', ['venue_name' => $name]) . $reason;
-            }
-        }
-
-        $data = [
+        $locale = $notifiable->locale ?? config('app.locale');
+        $payload = $this->buildPayload($locale);
+        return [
             'venue_request_id' => $this->venueRequest->id,
             'type' => 'venue_result_' . $this->result,
-            'title' => $title,
-            'message' => $message,
+            'title' => $payload['title'],
+            'message' => $payload['message'],
         ];
-
-        return $data;
     }
 
     /**
@@ -87,54 +45,29 @@ class VenueRequestResultNotification extends Notification
      */
     public function toFcm(object $notifiable): array
     {
-        $name = $this->venueRequest->name ?? 'صالتك';
-        $type = $this->venueRequest->type; // create | update | delete
-        $title = '';
-        $message = '';
-
-        if ($this->result === 'approved') {
-            switch ($type) {
-                case 'create':
-                    $title = __('messages.notifications.venue_result_approved_title');
-                    $message = __('messages.notifications.venue_result_approved_message', ['venue_name' => $name]);
-                    break;
-                case 'update':
-                    $title = __('messages.notifications.venue_result_approved_title');
-                    $message = __('messages.notifications.venue_result_approved_message', ['venue_name' => $name]);
-                    break;
-                case 'delete':
-                    $title = __('messages.notifications.venue_result_approved_title');
-                    $message = __('messages.notifications.venue_result_approved_message', ['venue_name' => $name]);
-                    break;
-                default:
-                    $title = __('messages.notifications.venue_result_approved_title');
-                    $message = __('messages.notifications.venue_result_approved_message', ['venue_name' => $name]);
-            }
-        } else {
-            $reason = $this->venueRequest->admin_notes ? " " . $this->venueRequest->admin_notes : '';
-            switch ($type) {
-                case 'create':
-                    $title = __('messages.notifications.venue_result_rejected_title');
-                    $message = __('messages.notifications.venue_result_rejected_message', ['venue_name' => $name]) . $reason;
-                    break;
-                case 'update':
-                    $title = __('messages.notifications.venue_result_rejected_title');
-                    $message = __('messages.notifications.venue_result_rejected_message', ['venue_name' => $name]) . $reason;
-                    break;
-                case 'delete':
-                    $title = __('messages.notifications.venue_result_rejected_title');
-                    $message = __('messages.notifications.venue_result_rejected_message', ['venue_name' => $name]) . $reason;
-                    break;
-                default:
-                    $title = __('messages.notifications.venue_result_rejected_title');
-                    $message = __('messages.notifications.venue_result_rejected_message', ['venue_name' => $name]) . $reason;
-            }
-        }
-
+        $locale = $notifiable->locale ?? config('app.locale');
+        $payload = $this->buildPayload($locale);
         return [
-            'title' => $title,
-            'message' => $message,
+            'title' => $payload['title'],
+            'message' => $payload['message'],
             'data' => ['type' => 'venue_result_' . $this->result, 'venue_request_id' => $this->venueRequest->id]
         ];
+    }
+
+    private function buildPayload(string $locale): array
+    {
+        $name = $this->venueRequest->getTranslation('name', $locale, false)
+            ?: __('messages.venue.default_name', [], $locale);
+
+        if ($this->result === 'approved') {
+            $title = __('messages.notifications.venue_result_approved_title', [], $locale);
+            $message = __('messages.notifications.venue_result_approved_message', ['venue_name' => $name], $locale);
+        } else {
+            $reason = $this->venueRequest->admin_notes ? " " . $this->venueRequest->admin_notes : '';
+            $title = __('messages.notifications.venue_result_rejected_title', [], $locale);
+            $message = __('messages.notifications.venue_result_rejected_message', ['venue_name' => $name], $locale) . $reason;
+        }
+
+        return compact('title', 'message');
     }
 }

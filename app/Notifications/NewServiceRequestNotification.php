@@ -37,43 +37,14 @@ class NewServiceRequestNotification extends Notification
      */
     public function toArray($notifiable)
     {
-        $vendorName = $this->service->vendor->name ?? __('messages.auth.user_mismatch');
-
-        switch ($this->requestType) {
-            case 'create':
-                $title = __('messages.notifications.service_request_create_title');
-                $message = __('messages.notifications.service_request_create_message', [
-                    'vendor_name' => $vendorName,
-                    'service_name' => $this->service->name,
-                ]);
-                break;
-            case 'update':
-                $title = __('messages.notifications.service_request_update_title');
-                $message = __('messages.notifications.service_request_update_message', [
-                    'vendor_name' => $vendorName,
-                    'service_name' => $this->service->name,
-                ]);
-                break;
-            case 'delete':
-                $title = __('messages.notifications.service_request_delete_title');
-                $message = __('messages.notifications.service_request_delete_message', [
-                    'vendor_name' => $vendorName,
-                    'service_name' => $this->service->name,
-                ]);
-                break;
-            default:
-                $title = __('messages.notifications.service_request_default_title');
-                $message = __('messages.notifications.service_request_default_message');
-        }
-
-        $data = [
+        $locale = $notifiable->locale ?? config('app.locale');
+        $payload = $this->buildPayload($locale);
+        return [
             'service_id' => $this->service->id,
             'type' => 'service_request_' . $this->requestType,
-            'title' => $title,
-            'message' => $message,
+            'title' => $payload['title'],
+            'message' => $payload['message'],
         ];
-
-        return $data;
     }
 
     /**
@@ -83,41 +54,44 @@ class NewServiceRequestNotification extends Notification
      */
     public function toFcm(object $notifiable): array
     {
-        $vendorName = $this->service->vendor->name ?? __('messages.auth.user_mismatch');
-        $title = '';
-        $message = '';
+        $locale = $notifiable->locale ?? config('app.locale');
+        $payload = $this->buildPayload($locale);
+        return [
+            'title' => $payload['title'],
+            'message' => $payload['message'],
+            'data' => ['type' => 'service_request_' . $this->requestType, 'service_id' => $this->service->id]
+        ];
+    }
+
+    private function buildPayload(string $locale): array
+    {
+        $vendorName = $this->service->vendor->name ?? __('messages.auth.user_mismatch', [], $locale);
+        $serviceName = $this->service->getTranslation('name', $locale);
 
         switch ($this->requestType) {
             case 'create':
-                $title = __('messages.notifications.service_request_create_title');
+                $title = __('messages.notifications.service_request_create_title', [], $locale);
                 $message = __('messages.notifications.service_request_create_message', [
-                    'vendor_name' => $vendorName,
-                    'service_name' => $this->service->name,
-                ]);
+                    'vendor_name' => $vendorName, 'service_name' => $serviceName,
+                ], $locale);
                 break;
             case 'update':
-                $title = __('messages.notifications.service_request_update_title');
+                $title = __('messages.notifications.service_request_update_title', [], $locale);
                 $message = __('messages.notifications.service_request_update_message', [
-                    'vendor_name' => $vendorName,
-                    'service_name' => $this->service->name,
-                ]);
+                    'vendor_name' => $vendorName, 'service_name' => $serviceName,
+                ], $locale);
                 break;
             case 'delete':
-                $title = __('messages.notifications.service_request_delete_title');
+                $title = __('messages.notifications.service_request_delete_title', [], $locale);
                 $message = __('messages.notifications.service_request_delete_message', [
-                    'vendor_name' => $vendorName,
-                    'service_name' => $this->service->name,
-                ]);
+                    'vendor_name' => $vendorName, 'service_name' => $serviceName,
+                ], $locale);
                 break;
             default:
-                $title = __('messages.notifications.service_request_default_title');
-                $message = __('messages.notifications.service_request_default_message');
+                $title = __('messages.notifications.service_request_default_title', [], $locale);
+                $message = __('messages.notifications.service_request_default_message', [], $locale);
         }
 
-        return [
-            'title' => $title,
-            'message' => $message,
-            'data' => ['type' => 'service_request_' . $this->requestType, 'service_id' => $this->service->id]
-        ];
+        return compact('title', 'message');
     }
 }

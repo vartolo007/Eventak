@@ -4,10 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Translatable\HasTranslations;
+use App\Traits\AutoTranslatable;
 
 class Venue extends Model
 {
-    use HasFactory;
+    use HasFactory, HasTranslations, AutoTranslatable;
+
+    public array $translatable = ['name', 'address', 'description'];
 
     protected $fillable = [
         'owner_id',

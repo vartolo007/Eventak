@@ -28,38 +28,14 @@ class ServiceRequestResultNotification extends Notification
 
     public function toArray($notifiable)
     {
-        $name = $this->service->name ?? 'خدمتك';
-
-        switch ($this->result) {
-            case 'approved':
-                $title = __('messages.notifications.service_result_approved_title');
-                $message = __('messages.notifications.service_result_approved_message', ['service_name' => $name]);
-                break;
-            case 'rejected':
-                $title = __('messages.notifications.service_result_rejected_title');
-                $message = __('messages.notifications.service_result_rejected_message', ['service_name' => $name]);
-                break;
-            case 'delete_approved':
-                $title = __('messages.notifications.service_result_delete_approved_title');
-                $message = __('messages.notifications.service_result_delete_approved_message', ['service_name' => $name]);
-                break;
-            case 'delete_rejected':
-                $title = __('messages.notifications.service_result_delete_rejected_title');
-                $message = __('messages.notifications.service_result_delete_rejected_message', ['service_name' => $name]);
-                break;
-            default:
-                $title = __('messages.notifications.service_result_default_title');
-                $message = __('messages.notifications.service_result_default_message', ['service_name' => $name]);
-        }
-
-        $data = [
+        $locale = $notifiable->locale ?? config('app.locale');
+        $payload = $this->buildPayload($locale);
+        return [
             'service_id' => $this->service->id,
             'type' => 'service_result_' . $this->result,
-            'title' => $title,
-            'message' => $message,
+            'title' => $payload['title'],
+            'message' => $payload['message'],
         ];
-
-        return $data;
     }
 
     /**
@@ -69,36 +45,42 @@ class ServiceRequestResultNotification extends Notification
      */
     public function toFcm(object $notifiable): array
     {
-        $name = $this->service->name ?? 'خدمتك';
-        $title = '';
-        $message = '';
+        $locale = $notifiable->locale ?? config('app.locale');
+        $payload = $this->buildPayload($locale);
+        return [
+            'title' => $payload['title'],
+            'message' => $payload['message'],
+            'data' => ['type' => 'service_result_' . $this->result, 'service_id' => $this->service->id]
+        ];
+    }
+
+    private function buildPayload(string $locale): array
+    {
+        $name = $this->service->getTranslation('name', $locale, false)
+            ?: __('messages.service.default_name', [], $locale);
 
         switch ($this->result) {
             case 'approved':
-                $title = __('messages.notifications.service_result_approved_title');
-                $message = __('messages.notifications.service_result_approved_message', ['service_name' => $name]);
+                $title = __('messages.notifications.service_result_approved_title', [], $locale);
+                $message = __('messages.notifications.service_result_approved_message', ['service_name' => $name], $locale);
                 break;
             case 'rejected':
-                $title = __('messages.notifications.service_result_rejected_title');
-                $message = __('messages.notifications.service_result_rejected_message', ['service_name' => $name]);
+                $title = __('messages.notifications.service_result_rejected_title', [], $locale);
+                $message = __('messages.notifications.service_result_rejected_message', ['service_name' => $name], $locale);
                 break;
             case 'delete_approved':
-                $title = __('messages.notifications.service_result_delete_approved_title');
-                $message = __('messages.notifications.service_result_delete_approved_message', ['service_name' => $name]);
+                $title = __('messages.notifications.service_result_delete_approved_title', [], $locale);
+                $message = __('messages.notifications.service_result_delete_approved_message', ['service_name' => $name], $locale);
                 break;
             case 'delete_rejected':
-                $title = __('messages.notifications.service_result_delete_rejected_title');
-                $message = __('messages.notifications.service_result_delete_rejected_message', ['service_name' => $name]);
+                $title = __('messages.notifications.service_result_delete_rejected_title', [], $locale);
+                $message = __('messages.notifications.service_result_delete_rejected_message', ['service_name' => $name], $locale);
                 break;
             default:
-                $title = __('messages.notifications.service_result_default_title');
-                $message = __('messages.notifications.service_result_default_message', ['service_name' => $name]);
+                $title = __('messages.notifications.service_result_default_title', [], $locale);
+                $message = __('messages.notifications.service_result_default_message', ['service_name' => $name], $locale);
         }
 
-        return [
-            'title' => $title,
-            'message' => $message,
-            'data' => ['type' => 'service_result_' . $this->result, 'service_id' => $this->service->id]
-        ];
+        return compact('title', 'message');
     }
 }

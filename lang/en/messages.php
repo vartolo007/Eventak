@@ -118,6 +118,7 @@ return [
         'category_deleted' => 'The service category was deleted successfully.',
     ],
     'venue' => [
+        'default_name' => 'The Venue',
         'no_venues' => 'You do not have any venues registered yet.',
         'unauthorized' => 'You are not authorized to make a decision on this booking.',
         'not_pending_accept' => 'This request cannot be accepted because it is not in the pending state.',
@@ -131,6 +132,9 @@ return [
         'update_success' => 'The modification request was sent to the admin successfully and the old venue remains active until approved.',
         'delete_permission_denied' => 'You do not have permission to delete this venue.',
         'delete_success' => 'The venue deletion request was submitted to the admin and it will remain visible until approved.',
+    ],
+    'service' => [
+        'default_name' => 'Your Service',
     ],
     'vendor' => [
         'vendor_only' => 'Only vendors can add services.',

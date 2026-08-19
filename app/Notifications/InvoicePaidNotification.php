@@ -29,18 +29,17 @@ class InvoicePaidNotification extends Notification
 
     public function toArray($notifiable)
     {
-        $data = [
+        $locale = $notifiable->locale ?? config('app.locale');
+        return [
             'event_id' => $this->event->id,
             'payment_id' => $this->payment->id,
             'type' => 'invoice_paid',
-            'title' => __('messages.notifications.invoice_paid_title'),
+            'title' => __('messages.notifications.invoice_paid_title', [], $locale),
             'message' => __('messages.notifications.invoice_paid_message', [
-                'event_name' => $this->event->event_name,
+                'event_name' => $this->event->getTranslation('event_name', $locale),
                 'amount' => $this->payment->amount,
-            ]),
+            ], $locale),
         ];
-
-        return $data;
     }
 
     /**
@@ -50,12 +49,13 @@ class InvoicePaidNotification extends Notification
      */
     public function toFcm(object $notifiable): array
     {
+        $locale = $notifiable->locale ?? config('app.locale');
         return [
-            'title' => __('messages.notifications.invoice_paid_title'),
+            'title' => __('messages.notifications.invoice_paid_title', [], $locale),
             'message' => __('messages.notifications.invoice_paid_message', [
-                'event_name' => $this->event->event_name,
+                'event_name' => $this->event->getTranslation('event_name', $locale),
                 'amount' => $this->payment->amount,
-            ]),
+            ], $locale),
             'data' => [
                 'type' => 'invoice_paid',
                 'event_id' => $this->event->id,

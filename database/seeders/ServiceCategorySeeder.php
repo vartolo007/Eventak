@@ -17,7 +17,9 @@ class ServiceCategorySeeder extends Seeder
         ];
 
         foreach ($categories as $name) {
-            ServiceCategory::firstOrCreate(['name' => $name]);
+            if (!ServiceCategory::where('name->ar', $name)->exists()) {
+                ServiceCategory::create(['name' => $name]);
+            }
         }
     }
 }

@@ -21,7 +21,8 @@ class ServiceController extends Controller
 
         // بحث حسب الاسم
         if ($request->has('search')) {
-            $query->where('name', 'like', '%' . $request->search . '%');
+            $locale = app()->getLocale();
+            $query->where("name->{$locale}", 'like', '%' . $request->search . '%');
         }
 
         // فلترة حسب السعر

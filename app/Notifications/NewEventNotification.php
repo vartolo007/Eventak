@@ -25,25 +25,27 @@ class NewEventNotification extends Notification
 
     public function toArray($notifiable): array
     {
+        $locale = $notifiable->locale ?? config('app.locale');
         return [
             'event_id' => $this->event->id,
-            'title' => __('messages.notifications.new_event_request_title'),
+            'title' => __('messages.notifications.new_event_request_title', [], $locale),
             'message' => __('messages.notifications.new_event_request_message', [
-                'event_name' => $this->event->event_name,
+                'event_name' => $this->event->getTranslation('event_name', $locale),
                 'customer_name' => $this->event->customer->name,
-            ]),
+            ], $locale),
             'type' => 'new_event_request'
         ];
     }
 
     public function toFcm(object $notifiable): array
     {
+        $locale = $notifiable->locale ?? config('app.locale');
         return [
-            'title' => __('messages.notifications.new_event_request_title'),
+            'title' => __('messages.notifications.new_event_request_title', [], $locale),
             'message' => __('messages.notifications.new_event_request_message', [
-                'event_name' => $this->event->event_name,
+                'event_name' => $this->event->getTranslation('event_name', $locale),
                 'customer_name' => $this->event->customer->name,
-            ]),
+            ], $locale),
             'data' => ['type' => 'new_event_request', 'event_id' => $this->event->id]
         ];
     }
