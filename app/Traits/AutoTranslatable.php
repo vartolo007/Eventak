@@ -9,12 +9,39 @@ trait AutoTranslatable
 {
     public static function bootAutoTranslatable(): void
     {
-        // استدعاء الميثود عبر forwardStaticCall يمنع المحرر من إظهار أي خطأ
         forward_static_call([Model::class, 'saving'], function ($model) {
             if (method_exists($model, 'autoTranslateMissingLocales')) {
                 $model->autoTranslateMissingLocales();
             }
         });
+    }
+
+    /**
+     * كشف لغة النص وحفظه تحت المفتاح الصحيح بدل الاعتماد الأعمى على app locale.
+     */
+    public function setAttribute($key, $value)
+    {
+        if (
+            is_string($value)
+            && !empty(trim($value))
+            && method_exists($this, 'isTranslatableAttribute')
+            && $this->isTranslatableAttribute($key)
+        ) {
+            $detectedLocale = $this->detectTextLocale($value);
+            $this->setTranslation($key, $detectedLocale, $value);
+            return $this;
+        }
+
+        return parent::setAttribute($key, $value);
+    }
+
+    protected function detectTextLocale(string $text): string
+    {
+        // إذا فيه حروف عربية → عربي، وإلا → إنكليزي
+        if (preg_match('/[\x{0600}-\x{06FF}]/u', $text)) {
+            return 'ar';
+        }
+        return 'en';
     }
 
     public function toArray(): array
