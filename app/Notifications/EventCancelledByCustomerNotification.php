@@ -1,9 +1,8 @@
 <?php
 
 namespace App\Notifications;
-use App\Channels\FcmChannel; // Add this line
-
-use App\Services\FirebaseService;
+// use App\Channels\FcmChannel; // Firebase معلّق
+// use App\Services\FirebaseService; // Firebase معلّق
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 use App\Models\Event;
@@ -23,7 +22,7 @@ class EventCancelledByCustomerNotification extends Notification
 
     public function via($notifiable): array
     {
-        return ['database', FcmChannel::class]; // 💾 حفظ في قاعدة البيانات لصاحب الصالة والموردين
+        return ['database']; // Firebase معلّق - كان: ['database', FcmChannel::class]
     }
 
     public function toArray($notifiable): array
@@ -32,21 +31,17 @@ class EventCancelledByCustomerNotification extends Notification
         return $this->buildPayload($locale);
     }
 
-    /**
-     * Get the FCM representation of the notification.
-     *
-     * @return array<string, mixed>
-     */
-    public function toFcm(object $notifiable): array
-    {
-        $locale = $notifiable->locale ?? config('app.locale');
-        $payload = $this->buildPayload($locale);
-        return [
-            'title' => $payload['title'],
-            'message' => $payload['message'],
-            'data' => ['type' => 'booking_cancelled_by_customer', 'event_id' => $this->event->id]
-        ];
-    }
+    // Firebase معلّق - toFcm
+    // public function toFcm(object $notifiable): array
+    // {
+    //     $locale = $notifiable->locale ?? config('app.locale');
+    //     $payload = $this->buildPayload($locale);
+    //     return [
+    //         'title' => $payload['title'],
+    //         'message' => $payload['message'],
+    //         'data' => ['type' => 'booking_cancelled_by_customer', 'event_id' => $this->event->id]
+    //     ];
+    // }
 
     private function buildPayload(string $locale): array
     {

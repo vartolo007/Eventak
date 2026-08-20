@@ -1,9 +1,8 @@
 <?php
 
 namespace App\Notifications;
-use App\Channels\FcmChannel; // Add this line
-
-use App\Services\FirebaseService;
+// use App\Channels\FcmChannel; // Firebase معلّق
+// use App\Services\FirebaseService; // Firebase معلّق
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
@@ -20,7 +19,7 @@ class NewEventNotification extends Notification
 
     public function via($notifiable): array
     {
-        return ['database', FcmChannel::class]; // حفظ الإشعار في قاعدة البيانات ليقرأه الفرونت إند
+        return ['database']; // Firebase معلّق - كان: ['database', FcmChannel::class]
     }
 
     public function toArray($notifiable): array
@@ -37,16 +36,17 @@ class NewEventNotification extends Notification
         ];
     }
 
-    public function toFcm(object $notifiable): array
-    {
-        $locale = $notifiable->locale ?? config('app.locale');
-        return [
-            'title' => __('messages.notifications.new_event_request_title', [], $locale),
-            'message' => __('messages.notifications.new_event_request_message', [
-                'event_name' => $this->event->getTranslation('event_name', $locale),
-                'customer_name' => $this->event->customer->name,
-            ], $locale),
-            'data' => ['type' => 'new_event_request', 'event_id' => $this->event->id]
-        ];
-    }
+    // Firebase معلّق - toFcm
+    // public function toFcm(object $notifiable): array
+    // {
+    //     $locale = $notifiable->locale ?? config('app.locale');
+    //     return [
+    //         'title' => __('messages.notifications.new_event_request_title', [], $locale),
+    //         'message' => __('messages.notifications.new_event_request_message', [
+    //             'event_name' => $this->event->getTranslation('event_name', $locale),
+    //             'customer_name' => $this->event->customer->name,
+    //         ], $locale),
+    //         'data' => ['type' => 'new_event_request', 'event_id' => $this->event->id]
+    //     ];
+    // }
 }

@@ -1,9 +1,8 @@
 <?php
 
 namespace App\Notifications;
-use App\Channels\FcmChannel; // Add this line
-
-use App\Services\FirebaseService;
+// use App\Channels\FcmChannel; // Firebase معلّق
+// use App\Services\FirebaseService; // Firebase معلّق
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 use App\Models\Event;
@@ -24,7 +23,7 @@ class InvoicePaidNotification extends Notification
 
     public function via($notifiable)
     {
-        return ['database', FcmChannel::class]; // 💾 حفظ في قاعدة البيانات لصاحب الصالة والموردين
+        return ['database']; // Firebase معلّق - كان: ['database', FcmChannel::class]
     }
 
     public function toArray($notifiable)
@@ -42,25 +41,21 @@ class InvoicePaidNotification extends Notification
         ];
     }
 
-    /**
-     * Get the FCM representation of the notification.
-     *
-     * @return array<string, mixed>
-     */
-    public function toFcm(object $notifiable): array
-    {
-        $locale = $notifiable->locale ?? config('app.locale');
-        return [
-            'title' => __('messages.notifications.invoice_paid_title', [], $locale),
-            'message' => __('messages.notifications.invoice_paid_message', [
-                'event_name' => $this->event->getTranslation('event_name', $locale),
-                'amount' => $this->payment->amount,
-            ], $locale),
-            'data' => [
-                'type' => 'invoice_paid',
-                'event_id' => $this->event->id,
-                'payment_id' => $this->payment->id,
-            ]
-        ];
-    }
+    // Firebase معلّق - toFcm
+    // public function toFcm(object $notifiable): array
+    // {
+    //     $locale = $notifiable->locale ?? config('app.locale');
+    //     return [
+    //         'title' => __('messages.notifications.invoice_paid_title', [], $locale),
+    //         'message' => __('messages.notifications.invoice_paid_message', [
+    //             'event_name' => $this->event->getTranslation('event_name', $locale),
+    //             'amount' => $this->payment->amount,
+    //         ], $locale),
+    //         'data' => [
+    //             'type' => 'invoice_paid',
+    //             'event_id' => $this->event->id,
+    //             'payment_id' => $this->payment->id,
+    //         ]
+    //     ];
+    // }
 }

@@ -29,7 +29,7 @@ class User extends Authenticatable
         'email_verified_at',
         'phone_verified_at',
         'vendor_category_id',
-        'fcm_token',
+        // 'fcm_token', // Firebase معلّق
         'locale',
     ];
 
@@ -42,7 +42,7 @@ class User extends Authenticatable
         'password',
         'remember_token',
         'otp_code',
-        'fcm_token',
+        // 'fcm_token', // Firebase معلّق
     ];
 
     /**

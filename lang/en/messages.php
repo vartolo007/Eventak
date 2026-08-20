@@ -123,6 +123,7 @@ return [
         'unauthorized' => 'You are not authorized to make a decision on this booking.',
         'not_pending_accept' => 'This request cannot be accepted because it is not in the pending state.',
         'accept_success' => 'The booking request was accepted successfully.',
+        'accept_with_services' => 'The booking request was accepted successfully, waiting for vendors to approve their services.',
         'reject_not_allowed' => 'This request cannot be rejected because it is already paid, cancelled, or completed.',
         'reject_success' => 'The booking request was rejected successfully and the reason was recorded for the customer.',
         'complete_not_paid' => 'The event cannot be closed until payment is complete.',

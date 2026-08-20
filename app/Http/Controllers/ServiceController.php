@@ -51,6 +51,19 @@ class ServiceController extends Controller
         ]);
     }
 
+    // عرض التصنيفات مع خدماتها النشطة (للفرونت: واجهة التصنيفات)
+    public function servicesByCategory()
+    {
+        $categories = ServiceCategory::with(['services' => function ($query) {
+            $query->where('status', 'active')->with('vendor');
+        }])->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $categories
+        ]);
+    }
+
     // عرض خدمة واحدة (تأكد أنها نشطة أو تخص المورد نفسه)
     public function show($id)
     {

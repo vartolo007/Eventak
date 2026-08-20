@@ -68,6 +68,7 @@ Route::middleware(['auth:sanctum', 'isAdmin'])->group(function () {
 Route::get('/customer/venues', [CustomerEventController::class, 'listVenues']); // عرض الصالات
 Route::get('/services', [ServiceController::class, 'index']);             // عرض كافة الخدمات مع الفلترة
 Route::get('/services/categories', [ServiceController::class, 'categories']); // عرض تصنيفات الخدمات
+Route::get('/services/by-category', [ServiceController::class, 'servicesByCategory']); // عرض التصنيفات مع خدماتها (للفرونت)
 Route::get('/services/{id}', [ServiceController::class, 'show']);         // عرض تفاصيل خدمة واحدة
 Route::get('/venues/search', [VenueController::class, 'search']);         // البحث والفلترة في الصالات (متاح للضيوف أيضاً)
 Route::get('/venues/{venueId}/ratings', [RatingController::class, 'venueRatings']); // ⭐ عرض تقييمات صالة معينة مع المعدل
@@ -145,6 +146,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index']);       //عرض كافة الإشعارات (المقروءة وغير المقروءة)
     Route::get('/notifications/unread', [NotificationController::class, 'unread']); //عرض الإشعارات غير المقروءة فقط
     Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);  //تحويل إشعار معين إلى مقروء
-    Route::post('/notifications/fcm-token', [NotificationController::class, 'updateFcmToken']); // إضافة هذا المسار
-    Route::post('/notifications/send-fcm', [NotificationController::class, 'sendFcmNotification'])->middleware('isAdmin'); // إرسال إشعار فوري للأدمن فقط
+    // Firebase معلّق
+    // Route::post('/notifications/fcm-token', [NotificationController::class, 'updateFcmToken']);
+    // Route::post('/notifications/send-fcm', [NotificationController::class, 'sendFcmNotification'])->middleware('isAdmin');
 });

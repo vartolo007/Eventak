@@ -123,7 +123,7 @@ class VenueOrderController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => $hasServices
-                ? __('messages.venue.accept_success')
+                ? __('messages.venue.accept_with_services')
                 : __('messages.venue.accept_success'),
             'data' => $event
         ], 200);

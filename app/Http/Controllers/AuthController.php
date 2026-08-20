@@ -35,8 +35,6 @@ class AuthController extends Controller
                 'user' => $user,
                 'token' => $token,
             ],
-            'user' => $user,
-            'token' => $token
         ], 201);
     }
 
@@ -67,8 +65,6 @@ class AuthController extends Controller
                 'user' => $user,
                 'token' => $token,
             ],
-            'user' => $user,
-            'token' => $token
         ]);
     }
 

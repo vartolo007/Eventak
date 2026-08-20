@@ -1,9 +1,8 @@
 <?php
 
 namespace App\Notifications;
-use App\Channels\FcmChannel; // Add this line
-
-use App\Services\FirebaseService;
+// use App\Channels\FcmChannel; // Firebase معلّق
+// use App\Services\FirebaseService; // Firebase معلّق
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 use App\Models\Venue;
@@ -23,7 +22,7 @@ class NewVenueRequestNotification extends Notification
 
     public function via($notifiable)
     {
-        return ['database', FcmChannel::class]; // 💾 حفظ محلي في الداتابيز
+        return ['database']; // Firebase معلّق - كان: ['database', FcmChannel::class]
     }
 
     public function toArray($notifiable)
@@ -38,21 +37,17 @@ class NewVenueRequestNotification extends Notification
         ];
     }
 
-    /**
-     * Get the FCM representation of the notification.
-     *
-     * @return array<string, mixed>
-     */
-    public function toFcm(object $notifiable): array
-    {
-        $locale = $notifiable->locale ?? config('app.locale');
-        $payload = $this->buildPayload($locale);
-        return [
-            'title' => $payload['title'],
-            'message' => $payload['message'],
-            'data' => ['type' => 'venue_request_' . $this->requestType, 'venue_request_id' => $this->venueRequest->id]
-        ];
-    }
+    // Firebase معلّق - toFcm
+    // public function toFcm(object $notifiable): array
+    // {
+    //     $locale = $notifiable->locale ?? config('app.locale');
+    //     $payload = $this->buildPayload($locale);
+    //     return [
+    //         'title' => $payload['title'],
+    //         'message' => $payload['message'],
+    //         'data' => ['type' => 'venue_request_' . $this->requestType, 'venue_request_id' => $this->venueRequest->id]
+    //     ];
+    // }
 
     private function buildPayload(string $locale): array
     {

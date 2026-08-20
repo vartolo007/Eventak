@@ -1,9 +1,8 @@
 <?php
 
 namespace App\Notifications;
-use App\Channels\FcmChannel; // Add this line
-
-use App\Services\FirebaseService;
+// use App\Channels\FcmChannel; // Firebase معلّق
+// use App\Services\FirebaseService; // Firebase معلّق
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
@@ -14,7 +13,7 @@ class EventApprovedNotification extends Notification
 
     public function __construct($event) { $this->event = $event; }
 
-    public function via($notifiable): array { return ['database', FcmChannel::class]; }
+    public function via($notifiable): array { return ['database']; } // Firebase معلّق
 
     public function toArray($notifiable): array
     {
@@ -27,18 +26,14 @@ class EventApprovedNotification extends Notification
         ];
     }
 
-    /**
-     * Get the FCM representation of the notification.
-     *
-     * @return array<string, mixed>
-     */
-    public function toFcm(object $notifiable): array
-    {
-        $locale = $notifiable->locale ?? config('app.locale');
-        return [
-            'title' => __('messages.notifications.booking_approved_title', [], $locale),
-            'message' => __('messages.notifications.booking_approved_message', ['date' => $this->event->date], $locale),
-            'data' => ['type' => 'booking_approved', 'event_id' => $this->event->id]
-        ];
-    }
+    // Firebase معلّق - toFcm
+    // public function toFcm(object $notifiable): array
+    // {
+    //     $locale = $notifiable->locale ?? config('app.locale');
+    //     return [
+    //         'title' => __('messages.notifications.booking_approved_title', [], $locale),
+    //         'message' => __('messages.notifications.booking_approved_message', ['date' => $this->event->date], $locale),
+    //         'data' => ['type' => 'booking_approved', 'event_id' => $this->event->id]
+    //     ];
+    // }
 }

@@ -20,8 +20,7 @@ class UserController extends Controller
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'role' => $user->role,
-                'avatar_url' => $user->avatar ? asset('storage/' . $user->avatar) : null,
-                'locale' => $user->locale,
+                'avatar_url' => $user->avatar ? asset('storage/' . $user->avatar) : null
             ]
         ]);
     }
@@ -35,7 +34,6 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:20|unique:users,phone,' . $user->id,
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-            'locale' => 'sometimes|in:ar,en',
         ]);
 
         $user->update($validated);
@@ -88,7 +86,4 @@ class UserController extends Controller
             'message' => __('messages.user.avatar_deleted')
         ]);
     }
-
-
-
 }
