@@ -3,45 +3,68 @@
 namespace App\Traits;
 
 use App\Services\TranslationService;
-use Illuminate\Database\Eloquent\Model;
 
 trait AutoTranslatable
 {
     public static function bootAutoTranslatable(): void
     {
-        forward_static_call([Model::class, 'saving'], function ($model) {
-            if (method_exists($model, 'autoTranslateMissingLocales')) {
+        static::saving(function ($model) {
+            try {
+                $model->fixTranslationLocales();
                 $model->autoTranslateMissingLocales();
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('AutoTranslatable saving error', [
+                    'model' => get_class($model),
+                    'error' => $e->getMessage(),
+                ]);
             }
         });
     }
 
-    /**
-     * كشف لغة النص وحفظه تحت المفتاح الصحيح بدل الاعتماد الأعمى على app locale.
-     */
-    public function setAttribute($key, $value)
-    {
-        if (
-            is_string($value)
-            && !empty(trim($value))
-            && method_exists($this, 'isTranslatableAttribute')
-            && $this->isTranslatableAttribute($key)
-        ) {
-            $detectedLocale = $this->detectTextLocale($value);
-            $this->setTranslation($key, $detectedLocale, $value);
-            return $this;
-        }
-
-        return parent::setAttribute($key, $value);
-    }
-
     protected function detectTextLocale(string $text): string
     {
-        // إذا فيه حروف عربية → عربي، وإلا → إنكليزي
         if (preg_match('/[\x{0600}-\x{06FF}]/u', $text)) {
             return 'ar';
         }
         return 'en';
+    }
+
+    protected function fixTranslationLocales(): void
+    {
+        if (!method_exists($this, 'getTranslatableAttributes') || !method_exists($this, 'getTranslations')) {
+            return;
+        }
+
+        foreach ($this->getTranslatableAttributes() as $field) {
+            $translations = $this->getTranslations($field);
+
+            if (empty($translations)) {
+                continue;
+            }
+
+            $corrected = [];
+            $needsFix = false;
+
+            foreach ($translations as $locale => $text) {
+                if (!is_string($text) || empty(trim($text))) {
+                    $corrected[$locale] = $text;
+                    continue;
+                }
+
+                $detected = $this->detectTextLocale($text);
+
+                if ($detected !== $locale && !isset($translations[$detected])) {
+                    $corrected[$detected] = $text;
+                    $needsFix = true;
+                } else {
+                    $corrected[$locale] = $text;
+                }
+            }
+
+            if ($needsFix) {
+                $this->attributes[$field] = $this->asJson($corrected);
+            }
+        }
     }
 
     public function toArray(): array
