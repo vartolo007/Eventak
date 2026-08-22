@@ -75,8 +75,8 @@ class VendorSeeder extends Seeder
                     Service::create([
                         'vendor_id' => $vendor->id,
                         'category_id' => $category?->id,
-                        'name' => $serviceData['name'],
-                        'description' => $serviceData['name'],
+                        'name' => ['ar' => $serviceData['name']],
+                        'description' => ['ar' => $serviceData['name']],
                         'price' => $serviceData['price'],
                         'status' => 'active',
                     ]);
